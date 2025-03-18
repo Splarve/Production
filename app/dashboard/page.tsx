@@ -11,23 +11,38 @@ export default async function Dashboard() {
   } = await supabase.auth.getUser()
   
   if (!user) {
-    return redirect('/login')
+    return redirect('/login/personal')
   }
   
-  // Get user profile with user_type
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('user_type')
-    .eq('id', user.id)
-    .single()
+  // Check user metadata for user_type
+  const userType = user.user_metadata.user_type as string
   
-  // Redirect to the appropriate dashboard based on user type
-  if (profile?.user_type === 'company') {
-    return redirect('/company/dashboard')
-  } else if (profile?.user_type === 'applicant') {
-    return redirect('/applicant/dashboard')
+  if (userType === 'personal') {
+    // Check if user has a personal profile
+    const { data: personalProfile } = await supabase
+      .from('personal_profiles')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle()
+    
+    if (personalProfile) {
+      return redirect('/dashboard/personal')
+    }
+  } else if (userType === 'company') {
+    // Check if user is a member of any company
+    const { data: companyMember } = await supabase
+      .from('company_members')
+      .select('company_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    
+    if (companyMember) {
+      return redirect('/dashboard/company')
+    }
   }
   
-  // Fallback if user_type is not set properly
-  return redirect('/account')
+  // If we can't determine the type or the user doesn't have the right profile,
+  // sign them out and redirect to login
+  await supabase.auth.signOut()
+  return redirect('/?error=Please+log+in+again')
 }

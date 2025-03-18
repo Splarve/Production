@@ -1,5 +1,5 @@
 'use client'
-// app/applicant/dashboard/applicant-dashboard-ui.tsx
+// app/dashboard/personal/personal-dashboard-ui.tsx
 import { useState } from 'react'
 import { User } from '@supabase/supabase-js'
 import Image from 'next/image'
@@ -11,10 +11,9 @@ interface Profile {
   username: string | null
   avatar_url: string | null
   website: string | null
-  user_type: string
 }
 
-export default function ApplicantDashboardUI({ 
+export default function PersonalDashboardUI({ 
   user, 
   profile 
 }: { 
@@ -30,17 +29,19 @@ export default function ApplicantDashboardUI({
               <Image 
                 src={profile.avatar_url} 
                 alt="Profile" 
-                layout="fill" 
-                objectFit="cover"
+                fill
+                className="object-cover"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-500">
-                No Image
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
               </div>
             )}
           </div>
           <div>
-            <h1 className="text-2xl font-bold">{profile.full_name || 'Applicant'}</h1>
+            <h1 className="text-2xl font-bold">{profile.full_name || 'Job Seeker'}</h1>
             <p className="text-gray-500">{user.email}</p>
             {profile.username && <p className="text-sm">@{profile.username}</p>}
           </div>
@@ -49,8 +50,8 @@ export default function ApplicantDashboardUI({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow p-6 col-span-2">
-          <h2 className="text-xl font-semibold mb-4">Applicant Dashboard</h2>
-          <p className="mb-4">Welcome to your applicant dashboard! Here you can:</p>
+          <h2 className="text-xl font-semibold mb-4">Personal Dashboard</h2>
+          <p className="mb-4">Welcome to your personal dashboard! From here you can:</p>
           <ul className="list-disc pl-5 mb-4">
             <li>Search for job openings</li>
             <li>Submit applications</li>
@@ -68,16 +69,16 @@ export default function ApplicantDashboardUI({
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold mb-3">Quick Links</h3>
             <nav className="space-y-2">
-              <Link href="/applicant/jobs" className="block p-2 hover:bg-gray-50 rounded">
+              <Link href="/jobs/browse" className="block p-2 hover:bg-gray-50 rounded">
                 Browse Jobs
               </Link>
-              <Link href="/applicant/applications" className="block p-2 hover:bg-gray-50 rounded">
+              <Link href="/profile/applications" className="block p-2 hover:bg-gray-50 rounded">
                 My Applications
               </Link>
-              <Link href="/account" className="block p-2 hover:bg-gray-50 rounded">
+              <Link href="/profile/personal/edit" className="block p-2 hover:bg-gray-50 rounded">
                 Edit Profile
               </Link>
-              <Link href="/applicant/resume" className="block p-2 hover:bg-gray-50 rounded">
+              <Link href="/profile/resume" className="block p-2 hover:bg-gray-50 rounded">
                 Resume Builder
               </Link>
             </nav>
@@ -88,7 +89,7 @@ export default function ApplicantDashboardUI({
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span>Account Type</span>
-                <span className="font-medium text-blue-600">Applicant</span>
+                <span className="font-medium text-blue-600">Personal</span>
               </div>
               <div className="flex justify-between">
                 <span>Username</span>

@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const token_hash = searchParams.get('token_hash')
   const type = searchParams.get('type') as EmailOtpType | null
+  const next = searchParams.get('next') || '/auth/confirmation-success'
   
   if (token_hash && type) {
     const supabase = await createClient()
@@ -17,8 +18,12 @@ export async function GET(request: NextRequest) {
     })
     
     if (!error) {
-      // Redirect to the confirmation success page instead of directly to account
-      return NextResponse.redirect(new URL('/auth/confirmation-success', request.url))
+      // Make sure this URL is absolute to prevent open redirect vulnerabilities
+      const redirectUrl = next.startsWith('/')
+        ? new URL(next, request.url)
+        : new URL('/auth/confirmation-success', request.url)
+        
+      return NextResponse.redirect(redirectUrl)
     }
   }
 
