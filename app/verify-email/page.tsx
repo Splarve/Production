@@ -32,7 +32,7 @@ export default function VerifyEmail() {
             height={24}
             className="dark:invert"
           />
-          <span className="text-xl font-semibold">JobConnect</span>
+          <span className="text-xl font-semibold text-black">JobConnect</span>
         </Link>
       </header>
 
@@ -44,8 +44,8 @@ export default function VerifyEmail() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold mb-3">Check your email</h1>
-          <p className="mb-6 text-gray-600">
+          <h1 className="text-2xl font-bold mb-3 text-black">Check your email</h1>
+          <p className="mb-6 text-black">
             We've sent a verification link to:<br />
             <span className="font-medium">{email}</span>
           </p>
@@ -57,7 +57,7 @@ export default function VerifyEmail() {
               <li>You'll be redirected to complete your profile</li>
             </ol>
           </div>
-          <p className="text-sm text-gray-500 mb-6">
+          <p className="text-sm text-black mb-6">
             Didn't receive an email? Check your spam folder or try again in a few minutes.
           </p>
           <Link 
@@ -71,7 +71,7 @@ export default function VerifyEmail() {
 
       {/* Footer */}
       <footer className="py-6 bg-white border-t border-gray-200 mt-auto">
-        <div className="container mx-auto px-6 text-center text-gray-600 text-sm">
+        <div className="container mx-auto px-6 text-center text-black">
           <p>© {new Date().getFullYear()} JobConnect. All rights reserved.</p>
         </div>
       </footer>

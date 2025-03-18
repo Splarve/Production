@@ -33,7 +33,7 @@ export default async function ConfirmationSuccess() {
             height={24}
             className="dark:invert"
           />
-          <span className="text-xl font-semibold">JobConnect</span>
+          <span className="text-xl font-semibold text-black">JobConnect</span>
         </Link>
       </header>
 
@@ -45,8 +45,8 @@ export default async function ConfirmationSuccess() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold mb-3">Email Verified!</h1>
-          <p className="mb-8 text-gray-600">
+          <h1 className="text-2xl font-bold mb-3 text-black">Email Verified!</h1>
+          <p className="mb-8 text-black">
             Thank you for verifying your email. Your account is now active.
           </p>
           
@@ -86,7 +86,7 @@ export default async function ConfirmationSuccess() {
 
       {/* Footer */}
       <footer className="py-6 bg-white border-t border-gray-200 mt-auto">
-        <div className="container mx-auto px-6 text-center text-gray-600 text-sm">
+        <div className="container mx-auto px-6 text-center text-black">
           <p>© {new Date().getFullYear()} JobConnect. All rights reserved.</p>
         </div>
       </footer>

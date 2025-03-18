@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
     if (!error) {
       // Make sure this URL is absolute to prevent open redirect vulnerabilities
       const redirectUrl = next.startsWith('/')
-        ? new URL(next, request.url)
-        : new URL('/auth/confirmation-success', request.url)
+        ? new URL(next, request.url).toString()
+        : new URL('/auth/confirmation-success', request.url).toString()
         
       return NextResponse.redirect(redirectUrl)
     }

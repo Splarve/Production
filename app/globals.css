@@ -2,7 +2,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000; /* Changed to black */
 }
 
 @theme inline {
@@ -12,10 +12,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
+@media (prefers-color-scheme: light) {
   :root {
     --background: #0a0a0a;
-    --foreground: #ededed;
+    --foreground: #ffffff; /* Changed to white for dark mode */
   }
 }
 
@@ -23,4 +23,16 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Force text to be black in light mode */
+.text-gray-500, .text-gray-600, .text-gray-700 {
+  color: #000000 !important;
+}
+
+/* Ensure dark mode has sufficient contrast */
+@media (prefers-color-scheme: light) {
+  .text-gray-500, .text-gray-600, .text-gray-700 {
+    color: #ffffff !important;
+  }
 }

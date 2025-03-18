@@ -15,7 +15,8 @@ export async function signup(formData: FormData) {
       data: {
         user_type: 'personal',
         full_name: formData.get('full_name') as string
-      }
+      },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirmation-success`
     }
   }
 

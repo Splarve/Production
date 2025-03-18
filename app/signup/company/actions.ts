@@ -38,7 +38,8 @@ export async function signup(formData: FormData) {
       data: {
         user_type: 'company',
         full_name: fullName
-      }
+      },
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirmation-success`
     }
   })
 
