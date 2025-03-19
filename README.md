@@ -1,6 +1,159 @@
 # SUPABASE SCRIPT REFERENCE
 
 ```
+-- Trigger function to handle email verification
+CREATE OR REPLACE FUNCTION public.handle_email_verification()
+RETURNS TRIGGER
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  user_type TEXT;
+  company_name TEXT;
+  company_username TEXT;
+  company_website TEXT;
+  new_company_id BIGINT;
+BEGIN
+  -- Only proceed if email was just confirmed
+  IF OLD.email_confirmed_at IS NULL AND NEW.email_confirmed_at IS NOT NULL THEN
+    -- Get the user type from metadata
+    user_type := NEW.raw_user_meta_data->>'user_type';
+  
+    -- If this is a company user, create the company
+    IF user_type = 'company' THEN
+      -- Get company details from metadata
+      company_name := NEW.raw_user_meta_data->>'company_name';
+      company_username := NEW.raw_user_meta_data->>'company_username';
+      company_website := NEW.raw_user_meta_data->>'company_website';
+  
+      IF company_name IS NOT NULL AND company_username IS NOT NULL THEN
+        -- Check if company username is already taken
+        IF EXISTS (SELECT 1 FROM public.companies WHERE username = company_username) THEN
+          RAISE EXCEPTION 'Company username is already taken: %', company_username;
+        END IF;
+    
+        -- Create company
+        INSERT INTO public.companies (
+          username,
+          company_name,
+          description,
+          website,
+          created_by
+        ) VALUES (
+          company_username,
+          company_name,
+          NULL,
+          company_website,
+          NEW.id
+        ) RETURNING id INTO new_company_id;
+    
+        -- Make user an owner of the company
+        INSERT INTO public.company_members (
+          company_id,
+          user_id,
+          role,
+          joined_at
+        ) VALUES (
+          new_company_id,
+          NEW.id,
+          'owner',
+          NOW()
+        );
+      END IF;
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create trigger for when a user's email is verified
+CREATE OR REPLACE TRIGGER on_email_verification
+  AFTER UPDATE ON auth.users
+  FOR EACH ROW
+  WHEN (OLD.email_confirmed_at IS NULL AND NEW.email_confirmed_at IS NOT NULL)
+  EXECUTE FUNCTION public.handle_email_verification();
+```
+
+```
+-- Enhanced trigger function to handle new user registration
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  user_type TEXT;
+  company_name TEXT;
+  company_username TEXT;
+  company_website TEXT;
+  new_company_id BIGINT;
+BEGIN
+  -- Get the user type from metadata
+  user_type := NEW.raw_user_meta_data->>'user_type';
+  
+  -- Handle personal profile
+  IF user_type = 'personal' THEN
+    INSERT INTO public.personal_profiles (
+      id, 
+      email,
+      full_name, 
+      avatar_url
+    )
+    VALUES (
+      NEW.id,
+      NEW.email,
+      NEW.raw_user_meta_data->>'full_name',
+      NEW.raw_user_meta_data->>'avatar_url'
+    );
+  
+  -- Handle company profile if user is verified
+  ELSIF user_type = 'company' AND NEW.email_confirmed_at IS NOT NULL THEN
+    -- Get company details from metadata
+    company_name := NEW.raw_user_meta_data->>'company_name';
+    company_username := NEW.raw_user_meta_data->>'company_username';
+    company_website := NEW.raw_user_meta_data->>'company_website';
+  
+    IF company_name IS NOT NULL AND company_username IS NOT NULL THEN
+      -- Check if company username is already taken
+      IF EXISTS (SELECT 1 FROM public.companies WHERE username = company_username) THEN
+        RAISE EXCEPTION 'Company username is already taken: %', company_username;
+      END IF;
+  
+      -- Create company
+      INSERT INTO public.companies (
+        username,
+        company_name,
+        description,
+        website,
+        created_by
+      ) VALUES (
+        company_username,
+        company_name,
+        NULL,
+        company_website,
+        NEW.id
+      ) RETURNING id INTO new_company_id;
+  
+      -- Make user an owner of the company
+      INSERT INTO public.company_members (
+        company_id,
+        user_id,
+        role,
+        joined_at
+      ) VALUES (
+        new_company_id,
+        NEW.id,
+        'owner',
+        NOW()
+      );
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+```
 -- Custom types for company roles and permissions
 CREATE TYPE public.company_role AS ENUM ('owner', 'admin', 'hr', 'social', 'member');
 CREATE TYPE public.company_permission AS ENUM (

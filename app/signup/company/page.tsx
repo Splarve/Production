@@ -9,6 +9,15 @@ import { useSearchParams } from 'next/navigation'
 export default function CompanySignupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [step, setStep] = useState(1) // Step 1: Account details, Step 2: Company details
+  // Form state to store values between steps
+  const [formValues, setFormValues] = useState({
+    email: '',
+    full_name: '',
+    password: '',
+    company_name: '',
+    company_username: '',
+    website: ''
+  })
   
   // Use the hook instead of direct access
   const searchParams = useSearchParams()
@@ -18,17 +27,41 @@ export default function CompanySignupPage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     
+    // Get the current form data
+    const formElement = e.currentTarget;
+    const formData = new FormData(formElement);
+    
     if (step === 1) {
+      // Save values from first step
+      setFormValues(prevValues => ({
+        ...prevValues,
+        email: formData.get('email') as string,
+        full_name: formData.get('full_name') as string,
+        password: formData.get('password') as string
+      }))
+      
       // Move to company details step
       setStep(2)
       return
     }
     
+    // For the final step, we need to combine all values into a single FormData
+    const completeFormData = new FormData();
+    
+    // Add values from first step
+    completeFormData.append('email', formValues.email);
+    completeFormData.append('full_name', formValues.full_name);
+    completeFormData.append('password', formValues.password);
+    
+    // Add values from second step
+    completeFormData.append('company_name', formData.get('company_name') as string);
+    completeFormData.append('company_username', formData.get('company_username') as string);
+    completeFormData.append('website', (formData.get('website') as string) || '');
+    
     // Handle final submission
     setIsLoading(true)
     try {
-      const formData = new FormData(e.currentTarget)
-      await signup(formData)
+      await signup(completeFormData)
     } finally {
       setIsLoading(false)
     }
@@ -111,6 +144,8 @@ export default function CompanySignupPage() {
                     name="email"
                     type="email"
                     required
+                    value={formValues.email}
+                    onChange={(e) => setFormValues({...formValues, email: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
                     placeholder="your@company.com"
                   />
@@ -125,6 +160,8 @@ export default function CompanySignupPage() {
                     name="full_name"
                     type="text"
                     required
+                    value={formValues.full_name}
+                    onChange={(e) => setFormValues({...formValues, full_name: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
                     placeholder="Your Name"
                   />
@@ -140,6 +177,8 @@ export default function CompanySignupPage() {
                     type="password"
                     required
                     minLength={6}
+                    value={formValues.password}
+                    onChange={(e) => setFormValues({...formValues, password: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
                     placeholder="••••••••"
                   />
@@ -157,6 +196,8 @@ export default function CompanySignupPage() {
                     name="company_name"
                     type="text"
                     required
+                    value={formValues.company_name}
+                    onChange={(e) => setFormValues({...formValues, company_name: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
                     placeholder="Example Company, Inc."
                   />
@@ -173,6 +214,8 @@ export default function CompanySignupPage() {
                     required
                     pattern="[a-zA-Z0-9\-_]+"
                     minLength={3}
+                    value={formValues.company_username}
+                    onChange={(e) => setFormValues({...formValues, company_username: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
                     placeholder="company-name"
                   />
@@ -189,6 +232,8 @@ export default function CompanySignupPage() {
                     id="website"
                     name="website"
                     type="url"
+                    value={formValues.website}
+                    onChange={(e) => setFormValues({...formValues, website: e.target.value})}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
                     placeholder="https://example.com"
                   />

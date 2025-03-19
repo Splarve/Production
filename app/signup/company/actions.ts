@@ -30,14 +30,17 @@ export async function signup(formData: FormData) {
     return redirect('/signup/company?error=' + encodeURIComponent('This company username is already taken. Please choose another.'))
   }
 
-  // Step 2: Create user account
+  // Step 2: Create user account with company details in metadata
   const { data: userData, error: signupError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
         user_type: 'company',
-        full_name: fullName
+        full_name: fullName,
+        company_name: companyName,
+        company_username: companyUsername,
+        company_website: website
       },
       emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/confirmation-success`
     }
@@ -45,31 +48,6 @@ export async function signup(formData: FormData) {
 
   if (signupError) {
     return redirect('/signup/company?error=' + encodeURIComponent(signupError.message))
-  }
-
-  // Step 3: Create company
-  if (userData.user) {
-    try {
-      const { data: companyData, error: companyError } = await supabase.rpc(
-        'create_company',
-        {
-          company_username: companyUsername,
-          company_name: companyName,
-          description: null,
-          website: website
-        }
-      )
-
-      if (companyError) {
-        // Try to sign out if company creation fails
-        await supabase.auth.signOut()
-        return redirect('/signup/company?error=' + encodeURIComponent('Failed to create company: ' + companyError.message))
-      }
-    } catch (error) {
-      // Try to sign out if company creation fails
-      await supabase.auth.signOut()
-      return redirect('/signup/company?error=' + encodeURIComponent('Failed to create company profile. Please try again.'))
-    }
   }
 
   // Redirect to verification pending page

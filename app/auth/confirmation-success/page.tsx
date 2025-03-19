@@ -17,9 +17,11 @@ export default async function ConfirmationSuccess() {
     return redirect('/login/personal?message=Please+log+in+with+your+verified+email')
   }
 
-  // Determine user type to direct them to the correct dashboard
-  const userType = user.user_metadata.user_type as string
-
+  // Determine user type from metadata
+  const userType = user.user_metadata?.user_type as string
+  
+  console.log("User confirmed with type:", userType);
+  
   // Render appropriate confirmation page based on user type
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
