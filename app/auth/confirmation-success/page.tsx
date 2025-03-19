@@ -7,22 +7,27 @@ import { createClient } from '@/utils/supabase/server'
 export default async function ConfirmationSuccess() {
   const supabase = await createClient()
   
-  // Check if user is authenticated after confirmation
+  // Try to get user session - this is fallback, as most users will be redirected
+  // directly to their login page from auth/confirm/route.ts
   const {
     data: { user },
   } = await supabase.auth.getUser()
   
-  if (!user) {
-    // If somehow not logged in, redirect to login
-    return redirect('/login/personal?message=Please+log+in+with+your+verified+email')
+  // Default user type if we can't determine
+  let userType = 'personal'
+  
+  if (user && user.user_metadata && user.user_metadata.user_type) {
+    userType = user.user_metadata.user_type as string
+    
+    // If we have the user type, redirect to appropriate login
+    if (userType === 'company') {
+      return redirect('/login/company?message=Email+verified+successfully.+Please+log+in.')
+    } else if (userType === 'personal') {
+      return redirect('/login/personal?message=Email+verified+successfully.+Please+log+in.')
+    }
   }
-
-  // Determine user type from metadata
-  const userType = user.user_metadata?.user_type as string
   
-  console.log("User confirmed with type:", userType);
-  
-  // Render appropriate confirmation page based on user type
+  // As a fallback, show the confirmation page with links to both login types
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -50,39 +55,24 @@ export default async function ConfirmationSuccess() {
           <h1 className="text-2xl font-bold mb-3 text-black">Email Verified!</h1>
           <p className="mb-8 text-black">
             Thank you for verifying your email. Your account is now active.
+            Please log in to continue.
           </p>
           
-          {userType === 'personal' ? (
-            <>
-              <Link 
-                href="/dashboard/personal"
-                className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded transition-colors mb-3"
-              >
-                Go to Dashboard
-              </Link>
-              <Link 
-                href="/profile/personal/edit"
-                className="block w-full py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded transition-colors"
-              >
-                Complete Your Profile
-              </Link>
-            </>
-          ) : (
-            <>
-              <Link 
-                href="/dashboard/company"
-                className="block w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded transition-colors mb-3"
-              >
-                Go to Company Dashboard
-              </Link>
-              <Link 
-                href="/profile/company/edit"
-                className="block w-full py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded transition-colors"
-              >
-                Complete Company Profile
-              </Link>
-            </>
-          )}
+          <div className="space-y-4">
+            <Link 
+              href="/login/personal"
+              className="block w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded transition-colors"
+            >
+              Personal Login
+            </Link>
+            
+            <Link 
+              href="/login/company"
+              className="block w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded transition-colors"
+            >
+              Company Login
+            </Link>
+          </div>
         </div>
       </main>
 
