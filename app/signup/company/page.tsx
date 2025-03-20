@@ -1,255 +1,76 @@
-'use client'
 // app/signup/company/page.tsx
+'use client'
 import { useState } from 'react'
-import { signup } from './actions'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { AuthLayout } from '@/components/auth/auth-layout'
 import { AuthCard } from '@/components/auth/auth-card'
-import { AuthInput } from '@/components/auth/auth-input'
 import { AuthButton } from '@/components/auth/auth-button'
-import { StepIndicator } from '@/components/auth/step-indicator'
-import { motion, AnimatePresence } from 'framer-motion'
+import { signInWithGoogle } from '@/utils/auth/oauth'
+import { motion } from 'framer-motion'
 
 export default function CompanySignupPage() {
   const [isLoading, setIsLoading] = useState(false)
-  const [step, setStep] = useState(1) // Step 1: Account details, Step 2: Company details
-  // Form state to store values between steps
-  const [formValues, setFormValues] = useState({
-    email: '',
-    full_name: '',
-    password: '',
-    company_name: '',
-    company_username: '',
-    website: ''
-  })
   
-  // Use the hook instead of direct access
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
   const message = searchParams.get('message')
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    
-    // Get the current form data
-    const formElement = e.currentTarget;
-    const formData = new FormData(formElement);
-    
-    if (step === 1) {
-      // Save values from first step
-      setFormValues(prevValues => ({
-        ...prevValues,
-        email: formData.get('email') as string,
-        full_name: formData.get('full_name') as string,
-        password: formData.get('password') as string
-      }))
-      
-      // Move to company details step
-      setStep(2)
-      return
-    }
-    
-    // For the final step, we need to combine all values into a single FormData
-    const completeFormData = new FormData();
-    
-    // Add values from first step
-    completeFormData.append('email', formValues.email);
-    completeFormData.append('full_name', formValues.full_name);
-    completeFormData.append('password', formValues.password);
-    
-    // Add values from second step
-    completeFormData.append('company_name', formData.get('company_name') as string);
-    completeFormData.append('company_username', formData.get('company_username') as string);
-    completeFormData.append('website', (formData.get('website') as string) || '');
-    
-    // Handle final submission
-    setIsLoading(true)
+  async function handleGoogleSignUp() {
     try {
-      await signup(completeFormData)
+      setIsLoading(true)
+      await signInWithGoogle('company')
+    } catch (error) {
+      console.error('Google sign up error:', error)
+      // Error will be handled by the OAuth callback
     } finally {
       setIsLoading(false)
     }
   }
-  
-  // Step titles and subtitles
-  const stepContent = [
-    {
-      title: "Create a Company Account",
-      subtitle: "Set up your account details"
-    },
-    {
-      title: "Company Information",
-      subtitle: "Tell us about your company"
-    }
-  ];
-  
-  // Animation variants for step transition
-  const stepVariants = {
-    hidden: (direction: number) => ({
-      x: direction > 0 ? 100 : -100,
-      opacity: 0
-    }),
-    visible: {
-      x: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.3
-      }
-    },
-    exit: (direction: number) => ({
-      x: direction > 0 ? -100 : 100,
-      opacity: 0,
-      transition: {
-        duration: 0.3
-      }
-    })
-  };
 
   return (
     <AuthLayout type="company" mode="signup">
       <AuthCard 
-        title={stepContent[step - 1].title}
-        subtitle={stepContent[step - 1].subtitle}
+        title="Create a Company Account" 
+        subtitle="Sign up to find top talent"
         error={error}
         message={message}
       >
-        <StepIndicator currentStep={step} totalSteps={2} />
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <AnimatePresence mode="wait" custom={step === 2 ? 1 : -1}>
-            {step === 1 ? (
-              <motion.div
-                key="step1"
-                custom={1}
-                variants={stepVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="space-y-4"
-              >
-                <AuthInput
-                  id="email"
-                  name="email"
-                  type="email"
-                  label="Email Address"
-                  placeholder="your@company.com"
-                  required
-                  value={formValues.email}
-                  onChange={(e) => setFormValues({...formValues, email: e.target.value})}
-                />
-                
-                <AuthInput
-                  id="full_name"
-                  name="full_name"
-                  type="text"
-                  label="Your Full Name"
-                  placeholder="Your Name"
-                  required
-                  value={formValues.full_name}
-                  onChange={(e) => setFormValues({...formValues, full_name: e.target.value})}
-                />
-                
-                <AuthInput
-                  id="password"
-                  name="password"
-                  type="password"
-                  label="Password"
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                  helperText="Must be at least 6 characters"
-                  value={formValues.password}
-                  onChange={(e) => setFormValues({...formValues, password: e.target.value})}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="step2"
-                custom={-1}
-                variants={stepVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                className="space-y-4"
-              >
-                <AuthInput
-                  id="company_name"
-                  name="company_name"
-                  type="text"
-                  label="Company Name"
-                  placeholder="Example Company, Inc."
-                  required
-                  value={formValues.company_name}
-                  onChange={(e) => setFormValues({...formValues, company_name: e.target.value})}
-                />
-                
-                <AuthInput
-                  id="company_username"
-                  name="company_username"
-                  type="text"
-                  label="Company Username"
-                  placeholder="company-name"
-                  required
-                  pattern="[a-zA-Z0-9\-_]+"
-                  minLength={3}
-                  helperText="This will be your unique company identifier (letters, numbers, dash, underscore only)"
-                  value={formValues.company_username}
-                  onChange={(e) => setFormValues({...formValues, company_username: e.target.value})}
-                />
-                
-                <AuthInput
-                  id="website"
-                  name="website"
-                  type="url"
-                  label="Company Website (optional)"
-                  placeholder="https://example.com"
-                  value={formValues.website}
-                  onChange={(e) => setFormValues({...formValues, website: e.target.value})}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
+        <div className="space-y-6">
+          <AuthButton
+            type="button"
+            onClick={handleGoogleSignUp}
+            isLoading={isLoading}
+            variant="primary"
+            className="flex items-center justify-center gap-2"
+          >
+            <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
+                <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z" />
+                <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z" />
+                <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z" />
+                <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z" />
+              </g>
+            </svg>
+            {isLoading ? 'Signing up...' : 'Sign up with Google'}
+          </AuthButton>
+        </div>
           
-          <div className="pt-4 flex flex-col sm:flex-row gap-3 justify-between">
-            {step === 2 && (
-              <AuthButton
-                type="button"
-                variant="outline"
-                fullWidth={false}
-                onClick={() => setStep(1)}
-              >
-                Back
-              </AuthButton>
-            )}
-            
-            <AuthButton
-              type="submit"
-              isLoading={isLoading}
-              fullWidth={step === 1}
-            >
-              {step === 1 
-                ? 'Continue'
-                : isLoading 
-                  ? 'Signing Up...' 
-                  : 'Complete Signup'
-              }
-            </AuthButton>
-          </div>
-          
-          {step === 1 && (
-            <div className="text-xs text-muted-foreground mt-4 text-center">
-              By continuing, you agree to our{' '}
-              <Link href="#" className="text-primary hover:underline">
-                Terms of Service
-              </Link>{' '}
-              and{' '}
-              <Link href="#" className="text-primary hover:underline">
-                Privacy Policy
-              </Link>
-            </div>
-          )}
-        </form>
+        <motion.div 
+          className="text-xs text-muted-foreground mt-6 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          By signing up, you agree to our{' '}
+          <Link href="#" className="text-primary hover:underline">
+            Terms of Service
+          </Link>{' '}
+          and{' '}
+          <Link href="#" className="text-primary hover:underline">
+            Privacy Policy
+          </Link>
+        </motion.div>
 
         <div className="mt-6 text-center">
           <p className="text-muted-foreground">

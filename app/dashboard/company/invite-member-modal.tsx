@@ -2,11 +2,12 @@
 // app/dashboard/company/invite-member-modal.tsx
 import { useState } from 'react'
 import { inviteMember } from './actions'
+import { CompanyRole } from '@/utils/auth/roles'
 
 interface InviteMemberModalProps {
   companyId: number
   onClose: () => void
-  userRole: string
+  userRole: CompanyRole
 }
 
 export default function InviteMemberModal({ 
@@ -15,7 +16,7 @@ export default function InviteMemberModal({
   userRole
 }: InviteMemberModalProps) {
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState<string>('member')
+  const [role, setRole] = useState<CompanyRole>('member')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
@@ -37,6 +38,11 @@ export default function InviteMemberModal({
           { value: 'social', label: 'Social' },
           { value: 'member', label: 'Member' }
         ];
+      case 'hr':
+        return [
+          { value: 'social', label: 'Social' },
+          { value: 'member', label: 'Member' }
+        ];
       default:
         return [
           { value: 'member', label: 'Member' }
@@ -51,7 +57,13 @@ export default function InviteMemberModal({
     setSuccess(null)
     
     try {
-      const result = await inviteMember(companyId, email, role)
+      // Create a FormData object for the server action
+      const formData = new FormData()
+      formData.append('companyId', companyId.toString())
+      formData.append('email', email)
+      formData.append('role', role)
+      
+      const result = await inviteMember(formData)
       
       if (result.error) {
         setError(result.error)
@@ -121,7 +133,7 @@ export default function InviteMemberModal({
               <select
                 id="role"
                 value={role}
-                onChange={(e) => setRole(e.target.value)}
+                onChange={(e) => setRole(e.target.value as CompanyRole)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
               >
                 {availableRoles().map((roleOption) => (

@@ -1,26 +1,27 @@
 'use client'
 // app/login/company/page.tsx
 import { useState } from 'react'
-import { login } from './actions'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { AuthLayout } from '@/components/auth/auth-layout'
 import { AuthCard } from '@/components/auth/auth-card'
-import { AuthInput } from '@/components/auth/auth-input'
 import { AuthButton } from '@/components/auth/auth-button'
+import { signInWithGoogle } from '@/utils/auth/oauth'
 
 export default function CompanyLoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   
-  // Use the hook instead of direct access
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
   const message = searchParams.get('message')
 
-  async function handleSubmit(formData: FormData) {
-    setIsLoading(true)
+  async function handleGoogleSignIn() {
     try {
-      await login(formData)
+      setIsLoading(true)
+      await signInWithGoogle('company')
+    } catch (error) {
+      console.error('Google sign in error:', error)
+      // Error will be handled by the OAuth callback
     } finally {
       setIsLoading(false)
     }
@@ -29,45 +30,48 @@ export default function CompanyLoginPage() {
   return (
     <AuthLayout type="company" mode="login">
       <AuthCard 
-        title="Welcome Back" 
-        subtitle="Log in to your company dashboard"
+        title="Company Login" 
+        subtitle="Access your company dashboard"
         error={error}
         message={message}
       >
-        <form onSubmit={(e) => {
-          e.preventDefault();
-          const formData = new FormData(e.currentTarget);
-          handleSubmit(formData);
-        }} className="space-y-4">
-          <AuthInput
-            id="email"
-            name="email"
-            type="email"
-            label="Email Address"
-            placeholder="your@company.com"
-            required
-          />
+        <div className="space-y-6">
+          {error && error.includes('personal account') && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md mb-4">
+              <p className="text-sm text-yellow-800">
+                It looks like you have a personal account. If you want to access your personal dashboard, please use the personal login.
+              </p>
+              <div className="mt-2">
+                <Link
+                  href="/login/personal"
+                  className="text-sm font-medium text-blue-600 hover:underline"
+                >
+                  Go to personal login →
+                </Link>
+              </div>
+            </div>
+          )}
           
-          <AuthInput
-            id="password"
-            name="password"
-            type="password"
-            label="Password"
-            placeholder="••••••••"
-            required
-          />
-          
-          <div className="pt-2">
-            <AuthButton
-              type="submit"
-              isLoading={isLoading}
-            >
-              {isLoading ? 'Signing In...' : 'Sign In'}
-            </AuthButton>
-          </div>
-        </form>
+          <AuthButton
+            type="button"
+            onClick={handleGoogleSignIn}
+            isLoading={isLoading}
+            variant="primary"
+            className="flex items-center justify-center gap-2"
+          >
+            <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+              <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
+                <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z" />
+                <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z" />
+                <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z" />
+                <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z" />
+              </g>
+            </svg>
+            {isLoading ? 'Signing in...' : 'Sign in with Google'}
+          </AuthButton>
+        </div>
 
-        <div className="mt-6 text-center">
+        <div className="mt-8 text-center">
           <p className="text-muted-foreground">
             Don't have a company account?{' '}
             <Link
@@ -77,6 +81,18 @@ export default function CompanyLoginPage() {
               Sign Up
             </Link>
           </p>
+          
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-sm text-gray-500">
+              Looking for a job?{' '}
+              <Link
+                href="/login/personal"
+                className="text-primary hover:underline focus:outline-none"
+              >
+                Login as a job seeker
+              </Link>
+            </p>
+          </div>
         </div>
       </AuthCard>
     </AuthLayout>

@@ -1,19 +1,27 @@
 // app/dashboard/personal/page.tsx
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
-import Link from 'next/link'
 import PersonalDashboardUI from './personal-dashboard-ui'
 
 export default async function PersonalDashboard() {
   const supabase = await createClient()
   
   // Get current user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
     return redirect('/login/personal')
+  }
+  
+  // Check user type
+  const { data: userType } = await supabase
+    .from('user_types')
+    .select('user_type')
+    .eq('id', user.id)
+    .single()
+  
+  if (!userType || userType.user_type !== 'personal') {
+    return redirect('/login/personal?error=You+need+a+personal+account+to+access+this+page')
   }
   
   // Get profile data

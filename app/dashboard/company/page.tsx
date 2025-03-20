@@ -7,12 +7,21 @@ export default async function CompanyDashboard() {
   const supabase = await createClient()
   
   // Get current user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
     return redirect('/login/company')
+  }
+  
+  // Check user type
+  const { data: userType } = await supabase
+    .from('user_types')
+    .select('user_type')
+    .eq('id', user.id)
+    .single()
+  
+  if (!userType || userType.user_type !== 'company') {
+    return redirect('/login/company?error=You+need+a+company+account+to+access+this+page')
   }
   
   // Get company membership data
@@ -23,8 +32,8 @@ export default async function CompanyDashboard() {
     .single()
   
   if (!companyMember) {
-    await supabase.auth.signOut()
-    return redirect('/login/company?error=No+company+association+found.+Please+login+again.')
+    // They're a company user but don't have a company yet
+    return redirect('/onboarding/company')
   }
   
   // Get company data

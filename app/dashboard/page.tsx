@@ -6,18 +6,26 @@ export default async function Dashboard() {
   const supabase = await createClient()
   
   // Get current user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   
   if (!user) {
     return redirect('/login/personal')
   }
   
-  // Check user metadata for user_type
-  const userType = user.user_metadata.user_type as string
+  // Check user type
+  const { data: userType } = await supabase
+    .from('user_types')
+    .select('user_type')
+    .eq('id', user.id)
+    .single()
   
-  if (userType === 'personal') {
+  if (!userType) {
+    // User type not found, sign out and redirect
+    await supabase.auth.signOut()
+    return redirect('/?error=Please+log+in+again')
+  }
+  
+  if (userType.user_type === 'personal') {
     // Check if user has a personal profile
     const { data: personalProfile } = await supabase
       .from('personal_profiles')
@@ -28,7 +36,7 @@ export default async function Dashboard() {
     if (personalProfile) {
       return redirect('/dashboard/personal')
     }
-  } else if (userType === 'company') {
+  } else if (userType.user_type === 'company') {
     // Check if user is a member of any company
     const { data: companyMember } = await supabase
       .from('company_members')
@@ -38,6 +46,9 @@ export default async function Dashboard() {
     
     if (companyMember) {
       return redirect('/dashboard/company')
+    } else {
+      // User is a company user but doesn't have a company yet
+      return redirect('/onboarding/company')
     }
   }
   
