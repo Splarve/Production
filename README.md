@@ -1,159 +1,6 @@
 # SUPABASE SCRIPT REFERENCE
 
 ```
--- Trigger function to handle email verification
-CREATE OR REPLACE FUNCTION public.handle_email_verification()
-RETURNS TRIGGER
-SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  user_type TEXT;
-  company_name TEXT;
-  company_username TEXT;
-  company_website TEXT;
-  new_company_id BIGINT;
-BEGIN
-  -- Only proceed if email was just confirmed
-  IF OLD.email_confirmed_at IS NULL AND NEW.email_confirmed_at IS NOT NULL THEN
-    -- Get the user type from metadata
-    user_type := NEW.raw_user_meta_data->>'user_type';
-  
-    -- If this is a company user, create the company
-    IF user_type = 'company' THEN
-      -- Get company details from metadata
-      company_name := NEW.raw_user_meta_data->>'company_name';
-      company_username := NEW.raw_user_meta_data->>'company_username';
-      company_website := NEW.raw_user_meta_data->>'company_website';
-  
-      IF company_name IS NOT NULL AND company_username IS NOT NULL THEN
-        -- Check if company username is already taken
-        IF EXISTS (SELECT 1 FROM public.companies WHERE username = company_username) THEN
-          RAISE EXCEPTION 'Company username is already taken: %', company_username;
-        END IF;
-    
-        -- Create company
-        INSERT INTO public.companies (
-          username,
-          company_name,
-          description,
-          website,
-          created_by
-        ) VALUES (
-          company_username,
-          company_name,
-          NULL,
-          company_website,
-          NEW.id
-        ) RETURNING id INTO new_company_id;
-    
-        -- Make user an owner of the company
-        INSERT INTO public.company_members (
-          company_id,
-          user_id,
-          role,
-          joined_at
-        ) VALUES (
-          new_company_id,
-          NEW.id,
-          'owner',
-          NOW()
-        );
-      END IF;
-    END IF;
-  END IF;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
--- Create trigger for when a user's email is verified
-CREATE OR REPLACE TRIGGER on_email_verification
-  AFTER UPDATE ON auth.users
-  FOR EACH ROW
-  WHEN (OLD.email_confirmed_at IS NULL AND NEW.email_confirmed_at IS NOT NULL)
-  EXECUTE FUNCTION public.handle_email_verification();
-```
-
-```
--- Enhanced trigger function to handle new user registration
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER
-SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE
-  user_type TEXT;
-  company_name TEXT;
-  company_username TEXT;
-  company_website TEXT;
-  new_company_id BIGINT;
-BEGIN
-  -- Get the user type from metadata
-  user_type := NEW.raw_user_meta_data->>'user_type';
-  
-  -- Handle personal profile
-  IF user_type = 'personal' THEN
-    INSERT INTO public.personal_profiles (
-      id, 
-      email,
-      full_name, 
-      avatar_url
-    )
-    VALUES (
-      NEW.id,
-      NEW.email,
-      NEW.raw_user_meta_data->>'full_name',
-      NEW.raw_user_meta_data->>'avatar_url'
-    );
-  
-  -- Handle company profile if user is verified
-  ELSIF user_type = 'company' AND NEW.email_confirmed_at IS NOT NULL THEN
-    -- Get company details from metadata
-    company_name := NEW.raw_user_meta_data->>'company_name';
-    company_username := NEW.raw_user_meta_data->>'company_username';
-    company_website := NEW.raw_user_meta_data->>'company_website';
-  
-    IF company_name IS NOT NULL AND company_username IS NOT NULL THEN
-      -- Check if company username is already taken
-      IF EXISTS (SELECT 1 FROM public.companies WHERE username = company_username) THEN
-        RAISE EXCEPTION 'Company username is already taken: %', company_username;
-      END IF;
-  
-      -- Create company
-      INSERT INTO public.companies (
-        username,
-        company_name,
-        description,
-        website,
-        created_by
-      ) VALUES (
-        company_username,
-        company_name,
-        NULL,
-        company_website,
-        NEW.id
-      ) RETURNING id INTO new_company_id;
-  
-      -- Make user an owner of the company
-      INSERT INTO public.company_members (
-        company_id,
-        user_id,
-        role,
-        joined_at
-      ) VALUES (
-        new_company_id,
-        NEW.id,
-        'owner',
-        NOW()
-      );
-    END IF;
-  END IF;
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-```
 -- Custom types for company roles and permissions
 CREATE TYPE public.company_role AS ENUM ('owner', 'admin', 'hr', 'social', 'member');
 CREATE TYPE public.company_permission AS ENUM (
@@ -166,6 +13,13 @@ CREATE TYPE public.company_permission AS ENUM (
   'job.delete',
   'application.view',
   'application.manage'
+);
+
+-- User types table to track whether a user is a personal or company account
+CREATE TABLE public.user_types (
+  id UUID REFERENCES auth.users ON DELETE CASCADE NOT NULL PRIMARY KEY,
+  user_type TEXT NOT NULL CHECK (user_type IN ('personal', 'company')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 -- Personal profiles table
@@ -266,7 +120,7 @@ INSERT INTO public.role_permissions (role, permission) VALUES
   ('member', 'application.view');
 
 -- Function to authorize company permissions
-CREATE FUNCTION public.authorize_company(
+CREATE OR REPLACE FUNCTION public.authorize_company(
   requested_permission company_permission,
   company_id BIGINT,
   user_id UUID
@@ -290,7 +144,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Function to check if user is a member of a company
-CREATE FUNCTION public.is_company_member(
+CREATE OR REPLACE FUNCTION public.is_company_member(
   company_id BIGINT,
   user_id UUID
 )
@@ -305,11 +159,19 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Enable Row Level Security
+ALTER TABLE public.user_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.personal_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.companies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.company_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.company_invitations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.role_permissions ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies for user_types
+CREATE POLICY "Users can view their own user type" ON public.user_types
+  FOR SELECT USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert their own user type" ON public.user_types
+  FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- RLS policies for personal_profiles
 CREATE POLICY "Users can view any personal profile" ON public.personal_profiles
@@ -372,44 +234,116 @@ CREATE POLICY "Users with invite permission can delete invitations" ON public.co
 CREATE POLICY "Everyone can view role permissions" ON public.role_permissions
   FOR SELECT USING (true);
 
--- Trigger function to handle new user registration
-CREATE OR REPLACE FUNCTION public.handle_new_user()
+-- Function to handle new user registration (for Google OAuth)
+CREATE OR REPLACE FUNCTION public.handle_new_google_user()
 RETURNS TRIGGER
 SECURITY DEFINER SET search_path = public
 AS $$
-DECLARE
-  user_type TEXT;
 BEGIN
-  -- Get the user type from metadata
-  user_type := NEW.raw_user_meta_data->>'user_type';
+  -- Insert into user_types table first
+  -- Note: Initially user type will be 'personal' by default
+  -- User can change to 'company' later if needed
+  INSERT INTO public.user_types (id, user_type)
+  VALUES (NEW.id, 'personal');
   
-  -- Handle personal profile
-  IF user_type = 'personal' THEN
-    INSERT INTO public.personal_profiles (
-      id, 
-      email,
-      full_name, 
-      avatar_url
-    )
-    VALUES (
-      NEW.id,
-      NEW.email,
-      NEW.raw_user_meta_data->>'full_name',
-      NEW.raw_user_meta_data->>'avatar_url'
-    );
-  END IF;
-  
-  -- For company accounts, we'll handle company creation separately
-  -- This will happen when the user enters company details after registration
+  -- Insert user into personal profiles
+  INSERT INTO public.personal_profiles (
+    id, 
+    email,
+    full_name, 
+    avatar_url
+  )
+  VALUES (
+    NEW.id,
+    NEW.email,
+    NEW.raw_user_meta_data->>'full_name', 
+    NEW.raw_user_meta_data->>'avatar_url'
+  );
   
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for when a new user signs up
+-- Trigger for when a new user signs up with Google OAuth
 CREATE OR REPLACE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_google_user();
+
+-- Function to handle user type changes from personal to company
+CREATE OR REPLACE FUNCTION public.handle_user_type_change()
+RETURNS TRIGGER
+SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  -- If user type changed from personal to company, we need to check if they supplied company info
+  IF NEW.user_type = 'company' AND OLD.user_type = 'personal' THEN
+    -- If there's metadata with company details, create the company
+    IF EXISTS (
+      SELECT 1 FROM auth.users
+      WHERE id = NEW.id
+      AND raw_user_meta_data->>'company_name' IS NOT NULL
+      AND raw_user_meta_data->>'company_username' IS NOT NULL
+    ) THEN
+      -- Create the company
+      DECLARE
+        company_name TEXT;
+        company_username TEXT;
+        company_website TEXT;
+        new_company_id BIGINT;
+      BEGIN
+        -- Get company details from user metadata
+        SELECT 
+          raw_user_meta_data->>'company_name',
+          raw_user_meta_data->>'company_username',
+          raw_user_meta_data->>'company_website'
+        INTO company_name, company_username, company_website
+        FROM auth.users
+        WHERE id = NEW.id;
+
+        -- Check if company username is already taken
+        IF EXISTS (SELECT 1 FROM public.companies WHERE username = company_username) THEN
+          RAISE EXCEPTION 'Company username is already taken: %', company_username;
+        END IF;
+    
+        -- Create company
+        INSERT INTO public.companies (
+          username,
+          company_name,
+          description,
+          website,
+          created_by
+        ) VALUES (
+          company_username,
+          company_name,
+          NULL,
+          company_website,
+          NEW.id
+        ) RETURNING id INTO new_company_id;
+    
+        -- Make user an owner of the company
+        INSERT INTO public.company_members (
+          company_id,
+          user_id,
+          role,
+          joined_at
+        ) VALUES (
+          new_company_id,
+          NEW.id,
+          'owner',
+          NOW()
+        );
+      END;
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger for when a user type changes
+CREATE OR REPLACE TRIGGER on_user_type_change
+  AFTER UPDATE ON public.user_types
+  FOR EACH ROW EXECUTE FUNCTION public.handle_user_type_change();
 
 -- Function to handle company invitations when a user signs up
 CREATE OR REPLACE FUNCTION public.handle_company_invitation()
@@ -503,6 +437,11 @@ BEGIN
     now()
   );
   
+  -- Update user type to company if it was personal
+  UPDATE public.user_types
+  SET user_type = 'company'
+  WHERE id = auth.uid() AND user_type = 'personal';
+  
   RETURN new_company_id;
 END;
 $$ LANGUAGE plpgsql;
@@ -552,6 +491,67 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to change user type from personal to company
+CREATE OR REPLACE FUNCTION public.change_to_company_user(
+  company_name TEXT,
+  company_username TEXT,
+  company_website TEXT DEFAULT NULL
+)
+RETURNS BIGINT
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  user_type_val TEXT;
+  new_company_id BIGINT;
+BEGIN
+  -- Get current user type
+  SELECT user_type INTO user_type_val
+  FROM public.user_types
+  WHERE id = auth.uid();
+  
+  -- Check if user is already a company user
+  IF user_type_val = 'company' THEN
+    RAISE EXCEPTION 'User is already a company user';
+  END IF;
+  
+  -- Update user metadata with company info
+  UPDATE auth.users
+  SET raw_user_meta_data = jsonb_set(
+    COALESCE(raw_user_meta_data, '{}'::jsonb),
+    '{company_name}',
+    to_jsonb(company_name)
+  );
+  
+  UPDATE auth.users
+  SET raw_user_meta_data = jsonb_set(
+    raw_user_meta_data,
+    '{company_username}',
+    to_jsonb(company_username)
+  );
+  
+  IF company_website IS NOT NULL THEN
+    UPDATE auth.users
+    SET raw_user_meta_data = jsonb_set(
+      raw_user_meta_data,
+      '{company_website}',
+      to_jsonb(company_website)
+    );
+  END IF;
+  
+  -- Update user type to company
+  UPDATE public.user_types
+  SET user_type = 'company'
+  WHERE id = auth.uid();
+  
+  -- Create company and return the ID
+  SELECT id INTO new_company_id
+  FROM public.companies
+  WHERE created_by = auth.uid();
+  
+  RETURN new_company_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Set up Storage for avatar and logo uploads
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('avatars', 'avatars', true)
@@ -595,4 +595,13 @@ CREATE POLICY "Company owners and admins can update logos" ON storage.objects
       AND authorize_company('company.edit', id, auth.uid())
     )
   );
+```
+
+```
+-- Remove the function for changing user type from personal to company
+DROP FUNCTION IF EXISTS public.change_to_company_user;
+
+-- Also remove the trigger that handles user type changes
+DROP TRIGGER IF EXISTS on_user_type_change ON public.user_types;
+DROP FUNCTION IF EXISTS public.handle_user_type_change;
 ```
