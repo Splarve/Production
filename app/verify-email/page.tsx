@@ -1,9 +1,12 @@
 'use client'
 // app/verify-email/page.tsx
 import Link from 'next/link'
-import Image from 'next/image'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import { AuthLayout } from '@/components/auth/auth-layout'
+import { AuthCard } from '@/components/auth/auth-card'
+import { AuthButton } from '@/components/auth/auth-button'
+import { motion } from 'framer-motion'
 
 export default function VerifyEmail() {
   const searchParams = useSearchParams()
@@ -20,61 +23,81 @@ export default function VerifyEmail() {
     return null // Will redirect in the useEffect
   }
 
-  return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Header */}
-      <header className="w-full py-4 px-6 flex justify-between items-center bg-white shadow-sm">
-        <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/next.svg"
-            alt="Logo"
-            width={100}
-            height={24}
-            className="dark:invert"
-          />
-          <span className="text-xl font-semibold text-black">JobConnect</span>
-        </Link>
-      </header>
+  // Used for staggered animation of list items
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2,
+        delayChildren: 0.3,
+      }
+    }
+  };
 
-      {/* Main content */}
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-lg shadow-lg max-w-md w-full text-center">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-5">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold mb-3 text-black">Check your email</h1>
-          <p className="mb-6 text-black">
-            We've sent a verification link to:<br />
-            <span className="font-medium">{email}</span>
+  const item = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0 }
+  };
+
+  return (
+    <AuthLayout type="personal" mode="signup">
+      <AuthCard 
+        title="Check Your Email"
+        subtitle="We've sent you a verification link"
+      >
+        <div className="text-center space-y-6">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="flex justify-center"
+          >
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+          </motion.div>
+          
+          <p className="text-foreground">
+            We've sent a verification link to:
           </p>
-          <div className="mb-6 p-4 bg-blue-50 text-blue-800 rounded-md text-left">
-            <h3 className="font-medium mb-2">Next steps:</h3>
-            <ol className="list-decimal pl-5 space-y-1">
-              <li>Open the email we just sent you</li>
-              <li>Click the verification link</li>
-              <li>You'll be redirected to complete your profile</li>
-            </ol>
+          <div className="font-medium text-lg bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            {email}
           </div>
-          <p className="text-sm text-black mb-6">
+          
+          <motion.div 
+            className="p-5 bg-primary/5 text-foreground rounded-lg text-left border border-primary/10"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h3 className="font-medium mb-3 text-foreground">Next steps:</h3>
+            <motion.ol 
+              className="list-decimal pl-5 space-y-2"
+              variants={container}
+              initial="hidden"
+              animate="show"
+            >
+              <motion.li variants={item}>Open the email we just sent you</motion.li>
+              <motion.li variants={item}>Click the verification link</motion.li>
+              <motion.li variants={item}>You'll be redirected to complete your profile</motion.li>
+            </motion.ol>
+          </motion.div>
+          
+          <p className="text-sm text-muted-foreground">
             Didn't receive an email? Check your spam folder or try again in a few minutes.
           </p>
-          <Link 
-            href="/"
-            className="inline-block bg-blue-600 text-white py-2 px-6 rounded hover:bg-blue-700 transition-colors"
+          
+          <AuthButton
+            type="button"
+            onClick={() => router.push('/')}
           >
             Back to Home
-          </Link>
+          </AuthButton>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="py-6 bg-white border-t border-gray-200 mt-auto">
-        <div className="container mx-auto px-6 text-center text-black">
-          <p>© {new Date().getFullYear()} JobConnect. All rights reserved.</p>
-        </div>
-      </footer>
-    </div>
+      </AuthCard>
+    </AuthLayout>
   )
 }

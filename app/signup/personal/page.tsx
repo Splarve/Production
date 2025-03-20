@@ -3,8 +3,12 @@
 import { useState } from 'react'
 import { signup } from './actions'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
+import { AuthLayout } from '@/components/auth/auth-layout'
+import { AuthCard } from '@/components/auth/auth-card'
+import { AuthInput } from '@/components/auth/auth-input'
+import { AuthButton } from '@/components/auth/auth-button'
+import { motion } from 'framer-motion'
 
 export default function PersonalSignupPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -24,141 +28,85 @@ export default function PersonalSignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      {/* Header */}
-      <header className="w-full py-4 px-6 flex justify-between items-center bg-white shadow-sm">
-        <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/next.svg"
-            alt="Logo"
-            width={100}
-            height={24}
-            className="dark:invert"
+    <AuthLayout type="personal" mode="signup">
+      <AuthCard 
+        title="Create Your Account" 
+        subtitle="Sign up to find your dream job"
+        error={error}
+        message={message}
+      >
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          const formData = new FormData(e.currentTarget);
+          handleSubmit(formData);
+        }} className="space-y-2">
+          <AuthInput
+            id="email"
+            name="email"
+            type="email"
+            label="Email Address"
+            placeholder="your@email.com"
+            required
           />
-          <span className="text-xl font-semibold">JobConnect</span>
-        </Link>
-        
-        <div className="flex gap-3">
-          <Link 
-            href="/signup/company" 
-            className="px-4 py-2 rounded hover:bg-gray-100 border border-gray-300 text-gray-600"
+          
+          <AuthInput
+            id="full_name"
+            name="full_name"
+            type="text"
+            label="Full Name"
+            placeholder="Your Name"
+            required
+          />
+          
+          <AuthInput
+            id="password"
+            name="password"
+            type="password"
+            label="Password"
+            placeholder="••••••••"
+            required
+            minLength={6}
+            helperText="Must be at least 6 characters"
+          />
+          
+          <div className="pt-4">
+            <AuthButton
+              type="submit"
+              isLoading={isLoading}
+            >
+              {isLoading ? 'Signing Up...' : 'Sign Up'}
+            </AuthButton>
+          </div>
+          
+          <motion.div 
+            className="text-xs text-muted-foreground mt-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
           >
-            For Companies
-          </Link>
+            By signing up, you agree to our{' '}
+            <Link href="#" className="text-primary hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="#" className="text-primary hover:underline">
+              Privacy Policy
+            </Link>
+          </motion.div>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-muted-foreground">
+            Already have an account?{' '}
+            <Link
+              href="/login/personal"
+              className="text-primary hover:underline focus:outline-none font-medium"
+            >
+              Sign In
+            </Link>
+          </p>
         </div>
-      </header>
-
-      {/* Main content */}
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md border border-gray-200">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold">Create Your Account</h1>
-            <p className="text-gray-600 mt-2">
-              Sign up to find your dream job
-            </p>
-          </div>
-
-          {/* Error message */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-              {error}
-            </div>
-          )}
-
-          {/* Success message */}
-          {message && (
-            <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-              {message}
-            </div>
-          )}
-
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            handleSubmit(formData);
-          }} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="your@email.com"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name
-              </label>
-              <input
-                id="full_name"
-                name="full_name"
-                type="text"
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="Your Name"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                minLength={6}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                placeholder="••••••••"
-              />
-              <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
-            </div>
-            
-            <div className="pt-2">
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
-              >
-                {isLoading ? 'Signing Up...' : 'Sign Up'}
-              </button>
-            </div>
-            
-            <div className="text-xs text-gray-500 mt-4">
-              By signing up, you agree to our{' '}
-              <a href="#" className="text-blue-600 hover:underline">Terms of Service</a>{' '}
-              and{' '}
-              <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>
-            </div>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Already have an account?{' '}
-              <Link
-                href="/login/personal"
-                className="text-blue-600 hover:underline focus:outline-none"
-              >
-                Sign In
-              </Link>
-            </p>
-          </div>
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="py-6 bg-white border-t border-gray-200">
-        <div className="container mx-auto px-6 text-center text-gray-600 text-sm">
-          <p>© {new Date().getFullYear()} JobConnect. All rights reserved.</p>
-        </div>
-      </footer>
-    </div>
+      </AuthCard>
+    </AuthLayout>
   )
 }
