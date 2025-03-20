@@ -4,6 +4,14 @@ import { createClient } from '@/utils/supabase/client'
 export async function signInWithGoogle(accountType: 'personal' | 'company' = 'personal') {
   const supabase = createClient()
   
+  // Check if the user is already logged in
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  // If there's a session, sign out first to ensure a clean authentication flow
+  if (session) {
+    await supabase.auth.signOut()
+  }
+  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -11,6 +19,10 @@ export async function signInWithGoogle(accountType: 'personal' | 'company' = 'pe
       queryParams: {
         access_type: 'offline',
         prompt: 'consent'
+      },
+      // Pass account type in metadata
+      data: {
+        account_type: accountType
       }
     }
   })

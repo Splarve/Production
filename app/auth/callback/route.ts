@@ -6,6 +6,7 @@ import { sendWelcomeEmail } from '@/utils/auth/email'
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get('code')
+  // Get the account type from the query parameter
   const type = requestUrl.searchParams.get('type') || 'personal'
   
   if (!code) {
@@ -40,29 +41,28 @@ export async function GET(request: NextRequest) {
     // Extract name from user metadata for email
     const userName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'
     
-    // Check if user exists in user_types table
-    const { data: userTypeData, error: userTypeError } = await supabase
-      .from('user_types')
-      .select('user_type')
-      .eq('id', user.id)
-      .maybeSingle()
+    // Check if the user already has a type
+    const { data: userType } = await supabase.rpc('get_user_type', {
+      user_id: user.id
+    })
     
-    // If the user is already in our system
-    if (userTypeData) {
-      // Check if they're trying to login with the correct account type
-      if (userTypeData.user_type !== type) {
-        // They're trying to sign in with the wrong account type
-        // Redirect them to the correct login page with an error message
-        const correctLoginPath = userTypeData.user_type === 'personal' ? 'personal' : 'company'
-        const errorMessage = `You already have a ${userTypeData.user_type} account. Please use the ${userTypeData.user_type} login.`
+    // If the user already has a type
+    if (userType) {
+      // If trying to sign in with wrong account type
+      if (userType !== type) {
+        // Sign out and redirect with error
+        await supabase.auth.signOut()
+        
+        const correctPath = userType === 'personal' ? 'personal' : 'company'
+        const errorMessage = `You already have a ${userType} account. Please use the ${userType} login.`
         
         return NextResponse.redirect(
-          new URL(`/login/${correctLoginPath}?error=${encodeURIComponent(errorMessage)}`, request.url)
+          new URL(`/login/${correctPath}?error=${encodeURIComponent(errorMessage)}`, request.url)
         )
       }
       
-      // They're using the correct account type, proceed with login
-      if (userTypeData.user_type === 'company') {
+      // User exists with correct type
+      if (type === 'company') {
         // Check if they have a company
         const { data: companyMember } = await supabase
           .from('company_members')
@@ -71,60 +71,39 @@ export async function GET(request: NextRequest) {
           .maybeSingle()
         
         if (companyMember) {
+          // Has company, go to dashboard
           return NextResponse.redirect(new URL('/dashboard/company', request.url))
         } else {
-          // They're a company user but don't have a company yet
+          // No company yet, go to onboarding
           return NextResponse.redirect(new URL('/onboarding/company', request.url))
         }
       } else {
-        // Personal user
+        // Personal user, go to dashboard
         return NextResponse.redirect(new URL('/dashboard/personal', request.url))
       }
     } else {
-      // This is a brand new user
-      // Create user type entry based on the login/signup type they chose
-      const { error: createTypeError } = await supabase
-        .from('user_types')
-        .insert({ id: user.id, user_type: type })
+      // New user - set the user type
+      const { error: typeError } = await supabase.rpc('set_user_type', {
+        user_id: user.id,
+        account_type: type
+      })
       
-      if (createTypeError) {
-        console.error('Create user type error:', createTypeError)
+      if (typeError) {
+        console.error('Error setting user type:', typeError)
         return NextResponse.redirect(
           new URL('/error?message=Failed+to+set+user+type', request.url)
         )
       }
       
-      // If they're signing up as a company user
+      // Send welcome email
+      await sendWelcomeEmail(userName, user.email || '', type as 'personal' | 'company')
+      
+      // Redirect based on account type
       if (type === 'company') {
-        // Send welcome email
-        await sendWelcomeEmail(userName, user.email || '', 'company')
-        
-        // Redirect to company onboarding
         return NextResponse.redirect(new URL('/onboarding/company', request.url))
+      } else {
+        return NextResponse.redirect(new URL('/dashboard/personal', request.url))
       }
-      
-      // For personal users, create their profile
-      const { error: createProfileError } = await supabase
-        .from('personal_profiles')
-        .insert({
-          id: user.id,
-          email: user.email,
-          full_name: user.user_metadata?.full_name || '',
-          avatar_url: user.user_metadata?.avatar_url || ''
-        })
-      
-      if (createProfileError) {
-        console.error('Create profile error:', createProfileError)
-        return NextResponse.redirect(
-          new URL('/error?message=Failed+to+create+user+profile', request.url)
-        )
-      }
-      
-      // Send welcome email for new personal users
-      await sendWelcomeEmail(userName, user.email || '', 'personal')
-      
-      // Redirect to personal dashboard
-      return NextResponse.redirect(new URL('/dashboard/personal', request.url))
     }
   } catch (error) {
     console.error('OAuth callback error:', error)

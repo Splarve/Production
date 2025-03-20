@@ -1,5 +1,5 @@
-// app/signup/company/page.tsx
 'use client'
+// app/signup/company/page.tsx
 import { useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
