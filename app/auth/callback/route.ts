@@ -8,6 +8,8 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get('code')
   // Get the account type from the query parameter
   const type = requestUrl.searchParams.get('type') || 'personal'
+  // Check if there's an invitation token in the query
+  const inviteToken = requestUrl.searchParams.get('invite_token')
   
   if (!code) {
     return NextResponse.redirect(
@@ -49,7 +51,7 @@ export async function GET(request: NextRequest) {
     // If the user already has a type
     if (userType) {
       // If trying to sign in with wrong account type
-      if (userType !== type) {
+      if (userType !== type && !inviteToken) {
         // Sign out and redirect with error
         await supabase.auth.signOut()
         
@@ -59,6 +61,13 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(
           new URL(`/login/${correctPath}?error=${encodeURIComponent(errorMessage)}`, request.url)
         )
+      }
+      
+      // If there's an invitation token, try to accept it explicitly
+      if (inviteToken) {
+        await supabase.rpc('accept_company_invitation', {
+          invite_token: inviteToken
+        })
       }
       
       // Check for and process pending invitations for this user's email
@@ -105,6 +114,13 @@ export async function GET(request: NextRequest) {
         )
       }
       
+      // If there's an invitation token, try to accept it explicitly
+      if (inviteToken) {
+        await supabase.rpc('accept_company_invitation', {
+          invite_token: inviteToken
+        })
+      }
+      
       // Check for and process pending invitations for this user's email
       const processingResult = await processPendingInvitations(supabase, user.id, user.email || '')
       
@@ -146,16 +162,17 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Process any pending invitations for a user
+ * Process any pending invitations for a user, including pre-accepted ones
  */
 async function processPendingInvitations(supabase: any, userId: string, email: string): Promise<{ processed: boolean }> {
   try {
     // Find any pending invitations for this email
+    // Include pre-accepted invitations even if expired
     const { data: invitations, error: inviteError } = await supabase
       .from('company_invitations')
       .select('*')
       .eq('email', email)
-      .gte('expires_at', 'now()')
+      .or(`expires_at.gte.now(),pre_accepted.eq.true`)
     
     if (inviteError) {
       console.error('Error fetching invitations:', inviteError)
@@ -174,10 +191,12 @@ async function processPendingInvitations(supabase: any, userId: string, email: s
     for (const invitation of invitations) {
       try {
         // Add the user to the company
+        // Ensure we're using the correct company_id variable
+        const companyId = invitation.company_id;
         const { error: memberError } = await supabase
           .from('company_members')
           .insert({
-            company_id: invitation.company_id,
+            company_id: companyId,
             user_id: userId,
             role: invitation.role,
             invited_by: invitation.invited_by,
