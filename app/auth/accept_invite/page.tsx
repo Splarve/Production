@@ -76,11 +76,19 @@ export default function AcceptInvite() {
   // Redirect to login page with specific email
   function handleLoginRedirect() {
     if (inviteDetails?.email) {
+      // Store the token in localStorage for after login
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pendingInviteToken', token || '');
+      }
+      
       // Add a returnUrl parameter to redirect back after login
       const returnUrl = encodeURIComponent(`/auth/accept_invite?token=${token}`)
-      router.push(`/auth/login?email=${encodeURIComponent(inviteDetails.email)}&returnUrl=${returnUrl}`)
+      
+      // FIXED: Use /login/personal instead of /auth/login
+      router.push(`/login/personal?email=${encodeURIComponent(inviteDetails.email)}&returnUrl=${returnUrl}`)
     } else {
-      router.push('/auth/login')
+      // FIXED: Use /login/personal instead of /auth/login
+      router.push('/login/personal')
     }
   }
   
@@ -107,7 +115,7 @@ export default function AcceptInvite() {
           <h2 className="text-xl font-semibold text-center mb-4">Invitation Error</h2>
           <p className="text-gray-600 mb-6 text-center">{error}</p>
           <div className="flex justify-center">
-            <Link href="/auth/login" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors">
+            <Link href="/login/personal" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors">
               Go to Login
             </Link>
           </div>
@@ -115,7 +123,7 @@ export default function AcceptInvite() {
       </div>
     )
   }
-  
+
   if (!inviteDetails) {
     return null; // Should never happen, but prevents TS errors
   }

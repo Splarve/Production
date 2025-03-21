@@ -23,7 +23,7 @@ export async function sendCompanyInvitation(
       }
       
       // Build invitation URL
-      const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/accept-invite?token=${token}`
+      const inviteUrl = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/accept_invite?token=${token}`
       
       // Import SendGrid following their pattern
       const sgMail = require('@sendgrid/mail')
