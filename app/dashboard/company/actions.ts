@@ -6,7 +6,14 @@ import { revalidatePath } from 'next/cache'
 import { sendCompanyInvitation } from '@/utils/auth/email'
 import { CompanyRole, canAssignRole } from '@/utils/auth/roles'
 
-export async function inviteMember(formData: FormData) {
+interface InvitationResult {
+  success?: boolean;
+  error?: string;
+  warning?: string;
+  message?: string;
+}
+
+export async function inviteMember(formData: FormData): Promise<InvitationResult> {
   try {
     const supabase = await createClient()
     
@@ -64,13 +71,26 @@ export async function inviteMember(formData: FormData) {
       return { error: 'Company not found' }
     }
     
+    // Check if user already has a pending invitation
+    const { data: existingInvitation } = await supabase
+      .from('company_invitations')
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('email', email)
+      .single()
+    
+    if (existingInvitation) {
+      // If there's an existing invitation, we'll update it
+      console.log(`Updating existing invitation for ${email}`)
+    }
+    
     // Create the invitation
     const { data: token, error: inviteError } = await supabase.rpc(
       'invite_to_company',
       {
-        company_id: companyId,
-        email: email,
-        role: role
+        in_company_id: companyId,
+        in_email: email, 
+        in_role: role
       }
     )
     
@@ -79,7 +99,7 @@ export async function inviteMember(formData: FormData) {
     }
     
     // Get inviter's name
-    const inviterName = user.user_metadata.full_name || user.email
+    const inviterName = user.user_metadata.full_name || user.email || 'A team member'
     
     // Send invitation email using SendGrid
     const emailResult = await sendCompanyInvitation(
@@ -91,18 +111,21 @@ export async function inviteMember(formData: FormData) {
     )
     
     if (!emailResult.success) {
-      // The invitation was created but email failed to send
-      // You might want to handle this case differently
+      // Log the error but don't fail the invitation creation
       console.error('Failed to send invitation email:', emailResult.error)
-      
-      // We'll still consider this successful since the invitation was created
-      // The user can be notified separately
+      return { 
+        success: true, 
+        warning: 'Invitation created but email delivery failed. You may need to share the invitation link manually.' 
+      }
     }
     
     // After inviting, revalidate the company dashboard page
     revalidatePath('/dashboard/company')
     
-    return { success: true }
+    return { 
+      success: true,
+      message: `Invitation sent to ${email}`
+    }
   } catch (error: any) {
     console.error('Invitation error:', error)
     return { error: error.message || 'Failed to send invitation' }
