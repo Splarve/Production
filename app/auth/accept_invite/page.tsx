@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { acceptInvitationAndRedirect } from './actions'
 
 export default function AcceptInvite() {
   const [loading, setLoading] = useState(true)
@@ -11,7 +12,9 @@ export default function AcceptInvite() {
   const [inviteDetails, setInviteDetails] = useState<{
     companyName: string;
     role: string;
+    email: string;
   } | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
   
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -19,7 +22,7 @@ export default function AcceptInvite() {
   const supabase = createClient()
   
   useEffect(() => {
-    async function getInviteDetails() {
+    async function getInviteAndUserDetails() {
       if (!token) {
         setError('Invalid or missing invitation token')
         setLoading(false)
@@ -27,7 +30,13 @@ export default function AcceptInvite() {
       }
       
       try {
-        // First, get the invitation details
+        // Get the current user's session
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user?.email) {
+          setUserEmail(session.user.email)
+        }
+        
+        // Get the invitation details
         const { data: invitation, error: inviteError } = await supabase
           .from('company_invitations')
           .select('company_id, role, email')
@@ -49,62 +58,30 @@ export default function AcceptInvite() {
           
         setInviteDetails({
           companyName: company?.company_name || 'a company',
-          role: invitation.role
+          role: invitation.role,
+          email: invitation.email
         })
-        
-        // Check if user is logged in
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (session) {
-          // If logged in, check if email matches
-          if (session.user.email === invitation.email) {
-            // Accept invite directly
-            await acceptInvite()
-          } else {
-            // Show error that they need to log in with the correct account
-            setError(`This invitation was sent to ${invitation.email}. Please log in with that account.`)
-          }
-        }
         
         setLoading(false)
       } catch (err: any) {
+        console.error('Failed to process invitation:', err)
         setError('Failed to process invitation')
         setLoading(false)
       }
     }
     
-    getInviteDetails()
-  }, [token])
+    getInviteAndUserDetails()
+  }, [token, supabase])
   
-  async function acceptInvite() {
-    if (!token) return
-    
-    try {
-      setLoading(true)
-      
-      // Call a server function to accept the invite
-      const { data, error } = await supabase.rpc('accept_company_invitation', {
-        invite_token: token
-      })
-      
-      if (error) throw error
-      
-      // Redirect to company dashboard on success
-      router.push('/dashboard/company')
-    } catch (err: any) {
-      setError(err.message || 'Failed to accept invitation')
-      setLoading(false)
+  // Redirect to login page with specific email
+  function handleLoginRedirect() {
+    if (inviteDetails?.email) {
+      // Add a returnUrl parameter to redirect back after login
+      const returnUrl = encodeURIComponent(`/auth/accept_invite?token=${token}`)
+      router.push(`/auth/login?email=${encodeURIComponent(inviteDetails.email)}&returnUrl=${returnUrl}`)
+    } else {
+      router.push('/auth/login')
     }
-  }
-  
-  async function handleSignIn() {
-    // Save token in local storage for after login
-    if (token) {
-      localStorage.setItem('pendingInviteToken', token)
-    }
-    
-    // Redirect to sign in page
-    router.push('/auth/login')
   }
   
   if (loading) {
@@ -139,6 +116,12 @@ export default function AcceptInvite() {
     )
   }
   
+  if (!inviteDetails) {
+    return null; // Should never happen, but prevents TS errors
+  }
+  
+  const emailMismatch = userEmail && userEmail.toLowerCase() !== inviteDetails.email.toLowerCase();
+  
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
@@ -149,22 +132,62 @@ export default function AcceptInvite() {
         </div>
         <h2 className="text-xl font-semibold text-center mb-4">Company Invitation</h2>
         <p className="text-gray-600 mb-6 text-center">
-          You've been invited to join <strong>{inviteDetails?.companyName}</strong> as a <strong>{inviteDetails?.role}</strong>.
+          You've been invited to join <strong>{inviteDetails.companyName}</strong> as a <strong>{inviteDetails.role}</strong>.
         </p>
-        <div className="flex justify-center space-x-4">
-          <button
-            onClick={handleSignIn}
-            className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 transition-colors"
-          >
-            Log In
-          </button>
-          <button
-            onClick={acceptInvite}
-            className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
-          >
-            Accept Invitation
-          </button>
-        </div>
+        
+        {userEmail ? (
+          // User is logged in
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-700 mb-2">
+              You're currently logged in as <strong>{userEmail}</strong>
+            </p>
+            {emailMismatch && (
+              <p className="text-sm text-red-600">
+                This invitation was sent to <strong>{inviteDetails.email}</strong>. Please log in with that account.
+              </p>
+            )}
+          </div>
+        ) : (
+          // User is not logged in
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm text-gray-700">
+              This invitation was sent to <strong>{inviteDetails.email}</strong>. Please log in with that account to accept.
+            </p>
+          </div>
+        )}
+        
+        {!userEmail ? (
+          // Not logged in - show login button
+          <div className="flex justify-center">
+            <button
+              onClick={handleLoginRedirect}
+              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+            >
+              Log In
+            </button>
+          </div>
+        ) : emailMismatch ? (
+          // Logged in with wrong account
+          <div className="flex justify-center">
+            <button
+              onClick={handleLoginRedirect}
+              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+            >
+              Log In with Correct Account
+            </button>
+          </div>
+        ) : (
+          // Logged in with correct account - show accept form
+          <form action={acceptInvitationAndRedirect} className="flex justify-center">
+            <input type="hidden" name="token" value={token || ''} />
+            <button 
+              type="submit"
+              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+            >
+              Accept Invitation
+            </button>
+          </form>
+        )}
       </div>
     </div>
   )
