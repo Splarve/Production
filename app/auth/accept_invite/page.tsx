@@ -9,6 +9,16 @@ import { acceptInvitationAndRedirect } from './actions'
 export default function AcceptInvite() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<string | null>(null)
+  const [tokens, setTokens] = useState<{
+    original: string | null,
+    urlToken: string | null,
+    dbTokens: Array<{token: string, email: string, expires_at: string}>
+  }>({
+    original: null,
+    urlToken: null,
+    dbTokens: []
+  })
   const [inviteDetails, setInviteDetails] = useState<{
     companyName: string;
     role: string;
@@ -29,6 +39,9 @@ export default function AcceptInvite() {
         return
       }
       
+      // Store the original token for comparison
+      setTokens(prev => ({...prev, original: token, urlToken: token?.trim() || null}))
+      
       try {
         // Get the current user's session
         const { data: { session } } = await supabase.auth.getSession()
@@ -36,36 +49,112 @@ export default function AcceptInvite() {
           setUserEmail(session.user.email)
         }
         
+        // First check all tokens in the database to see what we have
+        const { data: allInvites, error: invitesError } = await supabase
+          .from('company_invitations')
+          .select('id, token, email, expires_at')
+          .order('created_at', { ascending: false })
+          .limit(10)
+        
+        if (invitesError) {
+          setDebugInfo(`Error fetching invitations: ${invitesError.message}`)
+        }
+        
+        if (allInvites && allInvites.length > 0) {
+          setTokens(prev => ({
+            ...prev, 
+            dbTokens: allInvites.map(inv => ({
+              token: inv.token,
+              email: inv.email,
+              expires_at: inv.expires_at
+            }))
+          }))
+        } else {
+          // Try direct query for the specific token
+          const { data: directInvite, error: directError } = await supabase
+            .from('company_invitations')
+            .select('id, token, email, expires_at')
+            .eq('token', token)
+            .single()
+            
+          if (directError) {
+            setDebugInfo((prev) => `${prev || ''}
+Direct token query error: ${directError.message}
+Token used: ${token}`)
+          }
+          
+          if (directInvite) {
+            setTokens(prev => ({
+              ...prev,
+              dbTokens: [{
+                token: directInvite.token,
+                email: directInvite.email,
+                expires_at: directInvite.expires_at
+              }]
+            }))
+          }
+        }
+        
         // Get the invitation details
-        const { data: invitation, error: inviteError } = await supabase
+        let foundInvitation;
+        let { data: invitation, error: inviteError } = await supabase
           .from('company_invitations')
           .select('company_id, role, email')
           .eq('token', token)
           .single()
         
-        if (inviteError || !invitation) {
-          setError('Invalid or expired invitation token')
-          setLoading(false)
-          return
+        if (inviteError) {
+          setDebugInfo((prev) => `${prev || ''}
+Invitation query error: ${inviteError.message}
+Token used: ${token}`)
+          
+          // Try with trimmed token
+          const { data: trimmedInvitation, error: trimmedError } = await supabase
+            .from('company_invitations')
+            .select('company_id, role, email')
+            .eq('token', token.trim())
+            .single()
+            
+          if (trimmedError) {
+            setDebugInfo((prev) => `${prev || ''}
+Trimmed token query error: ${trimmedError.message}
+Token used: ${token.trim()}`)
+            
+            setError('Invalid or expired invitation token')
+            setLoading(false)
+            return
+          } else {
+            // Trimmed token worked
+            foundInvitation = trimmedInvitation
+          }
+        } else {
+          foundInvitation = invitation
         }
         
         // Get company name
-        const { data: company } = await supabase
+        const { data: company, error: companyError } = await supabase
           .from('companies')
           .select('company_name')
-          .eq('id', invitation.company_id)
+          .eq('id', foundInvitation.company_id)
           .single()
+          
+        if (companyError) {
+          setDebugInfo((prev) => `${prev || ''}
+Company query error: ${companyError.message}
+Company ID: ${foundInvitation.company_id}`)
+        }
           
         setInviteDetails({
           companyName: company?.company_name || 'a company',
-          role: invitation.role,
-          email: invitation.email
+          role: foundInvitation.role,
+          email: foundInvitation.email
         })
         
         setLoading(false)
       } catch (err: any) {
         console.error('Failed to process invitation:', err)
         setError('Failed to process invitation')
+        setDebugInfo(`Error: ${err.message}\n${err.stack}`)
         setLoading(false)
       }
     }
@@ -84,11 +173,34 @@ export default function AcceptInvite() {
       // Add a returnUrl parameter to redirect back after login
       const returnUrl = encodeURIComponent(`/auth/accept_invite?token=${token}`)
       
-      // FIXED: Use /login/personal instead of /auth/login
       router.push(`/login/personal?email=${encodeURIComponent(inviteDetails.email)}&returnUrl=${returnUrl}`)
     } else {
-      // FIXED: Use /login/personal instead of /auth/login
       router.push('/login/personal')
+    }
+  }
+  
+  // Try to manually accept the invitation
+  async function manuallyAcceptInvite() {
+    if (!token) return;
+    
+    try {
+      setError(null);
+      setDebugInfo((prev) => `${prev || ''}\nAttempting manual accept...`)
+      
+      const res = await fetch('/api/accept-invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      
+      const result = await res.json();
+      if (result.success) {
+        router.push('/dashboard/company?message=Invitation+accepted')
+      } else {
+        setDebugInfo((prev) => `${prev || ''}\nManual accept error: ${result.error}`)
+      }
+    } catch (err: any) {
+      setDebugInfo((prev) => `${prev || ''}\nManual accept error: ${err.message}`)
     }
   }
   
@@ -114,10 +226,49 @@ export default function AcceptInvite() {
           </div>
           <h2 className="text-xl font-semibold text-center mb-4">Invitation Error</h2>
           <p className="text-gray-600 mb-6 text-center">{error}</p>
-          <div className="flex justify-center">
+          
+          {/* Display token information for debugging */}
+          <div className="mb-6 p-3 bg-gray-100 border border-gray-300 rounded-md text-xs overflow-auto max-h-60">
+            <h3 className="font-bold mb-1">Token Info:</h3>
+            <p>Original URL token: {tokens.original || 'none'}</p>
+            <p>Trimmed URL token: {tokens.urlToken || 'none'}</p>
+            
+            <h3 className="font-bold mt-3 mb-1">Recent database tokens:</h3>
+            {tokens.dbTokens.length > 0 ? (
+              <ul>
+                {tokens.dbTokens.map((inv, i) => (
+                  <li key={i} className={inv.token === tokens.original ? 'text-green-600 font-bold' : ''}>
+                    {i+1}. Token: {inv.token.substring(0, 20)}...
+                    <br/>Email: {inv.email}
+                    <br/>Expires: {new Date(inv.expires_at).toLocaleString()}
+                    <br/>{inv.token === tokens.original ? '✓ (exact match)' : ''}
+                    {inv.token === tokens.urlToken ? ' ✓ (trimmed match)' : ''}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No tokens found in database</p>
+            )}
+            
+            {debugInfo && (
+              <div className="mt-3">
+                <h3 className="font-bold mb-1">Debug Info:</h3>
+                <pre className="whitespace-pre-wrap">{debugInfo}</pre>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-center space-x-3">
             <Link href="/login/personal" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors">
               Go to Login
             </Link>
+            
+            <button 
+              onClick={manuallyAcceptInvite}
+              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+            >
+              Try Manual Accept
+            </button>
           </div>
         </div>
       </div>
@@ -142,6 +293,37 @@ export default function AcceptInvite() {
         <p className="text-gray-600 mb-6 text-center">
           You've been invited to join <strong>{inviteDetails.companyName}</strong> as a <strong>{inviteDetails.role}</strong>.
         </p>
+        
+        {/* Display token information for debugging */}
+        <div className="mb-6 p-3 bg-gray-100 border border-gray-300 rounded-md text-xs overflow-auto max-h-60">
+          <h3 className="font-bold mb-1">Token Info:</h3>
+          <p>Original URL token: {tokens.original || 'none'}</p>
+          <p>Trimmed URL token: {tokens.urlToken || 'none'}</p>
+          
+          <h3 className="font-bold mt-3 mb-1">Recent database tokens:</h3>
+          {tokens.dbTokens.length > 0 ? (
+            <ul>
+              {tokens.dbTokens.map((inv, i) => (
+                <li key={i} className={inv.token === tokens.original ? 'text-green-600 font-bold' : ''}>
+                  {i+1}. Token: {inv.token.substring(0, 20)}...
+                  <br/>Email: {inv.email}
+                  <br/>Expires: {new Date(inv.expires_at).toLocaleString()}
+                  <br/>{inv.token === tokens.original ? '✓ (exact match)' : ''}
+                  {inv.token === tokens.urlToken ? ' ✓ (trimmed match)' : ''}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>No tokens found in database</p>
+          )}
+          
+          {debugInfo && (
+            <div className="mt-3">
+              <h3 className="font-bold mb-1">Debug Info:</h3>
+              <pre className="whitespace-pre-wrap">{debugInfo}</pre>
+            </div>
+          )}
+        </div>
         
         {userEmail ? (
           // User is logged in
@@ -185,16 +367,25 @@ export default function AcceptInvite() {
             </button>
           </div>
         ) : (
-          // Logged in with correct account - show accept form
-          <form action={acceptInvitationAndRedirect} className="flex justify-center">
-            <input type="hidden" name="token" value={token || ''} />
+          // Logged in with correct account - show accept form with debugging info
+          <div>
+            <form action={acceptInvitationAndRedirect} className="flex justify-center">
+              <input type="hidden" name="token" value={token || ''} />
+              <button 
+                type="submit"
+                className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+              >
+                Accept Invitation
+              </button>
+            </form>
+            
             <button 
-              type="submit"
-              className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+              onClick={manuallyAcceptInvite}
+              className="mt-2 text-xs text-gray-600 underline"
             >
-              Accept Invitation
+              Alternative: Try Manual Accept
             </button>
-          </form>
+          </div>
         )}
       </div>
     </div>

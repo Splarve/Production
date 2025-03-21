@@ -9,6 +9,9 @@ import { redirect } from 'next/navigation'
  */
 export async function acceptInvitation(token: string) {
   try {
+    // Ensure token is properly trimmed
+    const cleanToken = token.trim();
+    
     const supabase = await createClient()
     
     // Get the current user
@@ -20,7 +23,7 @@ export async function acceptInvitation(token: string) {
     
     // Call the Supabase function to process the invitation
     const { data, error } = await supabase.rpc('accept_company_invitation', {
-      invite_token: token
+      invite_token: cleanToken
     })
     
     if (error) {
@@ -40,7 +43,7 @@ export async function acceptInvitation(token: string) {
  * Action that accepts an invitation and redirects the user
  */
 export async function acceptInvitationAndRedirect(formData: FormData) {
-  const token = formData.get('token') as string
+  const token = (formData.get('token') as string)?.trim() || '';
   
   if (!token) {
     redirect('/error?message=Invalid+or+missing+invitation+token')
