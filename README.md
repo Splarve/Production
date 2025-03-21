@@ -304,7 +304,7 @@ BEGIN
         IF EXISTS (SELECT 1 FROM public.companies WHERE username = company_username) THEN
           RAISE EXCEPTION 'Company username is already taken: %', company_username;
         END IF;
-    
+  
         -- Create company
         INSERT INTO public.companies (
           username,
@@ -319,7 +319,7 @@ BEGIN
           company_website,
           NEW.id
         ) RETURNING id INTO new_company_id;
-    
+  
         -- Make user an owner of the company
         INSERT INTO public.company_members (
           company_id,
@@ -604,4 +604,116 @@ DROP FUNCTION IF EXISTS public.change_to_company_user;
 -- Also remove the trigger that handles user type changes
 DROP TRIGGER IF EXISTS on_user_type_change ON public.user_types;
 DROP FUNCTION IF EXISTS public.handle_user_type_change;
+```
+
+```
+-- Drop the function if it exists
+DROP FUNCTION IF EXISTS public.invite_to_company(BIGINT, TEXT, company_role);
+
+-- Create the function again
+CREATE OR REPLACE FUNCTION public.invite_to_company(
+  in_company_id BIGINT,
+  in_email TEXT,
+  in_role company_role DEFAULT 'member'::public.company_role
+)
+RETURNS TEXT
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  token TEXT;
+BEGIN
+  -- Check if the user has permission to invite
+  IF NOT authorize_company('member.invite', in_company_id, auth.uid()) THEN
+    RAISE EXCEPTION 'You do not have permission to invite members to this company';
+  END IF;
+  
+  -- Generate a token using gen_random_uuid which is built into PostgreSQL
+  token := replace(gen_random_uuid()::text, '-', '') || to_char(now(), 'YYYYMMDDHH24MISS');
+  
+  -- Create the invitation
+  INSERT INTO public.company_invitations (
+    company_id,
+    email,
+    role,
+    token,
+    invited_by
+  ) VALUES (
+    in_company_id,
+    in_email,
+    in_role,
+    token,
+    auth.uid()
+  ) ON CONFLICT (company_id, email) 
+  DO UPDATE SET 
+    role = EXCLUDED.role,
+    token = EXCLUDED.token,
+    invited_by = EXCLUDED.invited_by,
+    created_at = now(),
+    expires_at = now() + interval '7 days';
+  
+  RETURN token;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+```
+CREATE OR REPLACE FUNCTION public.accept_company_invitation(
+  invite_token TEXT
+)
+RETURNS BOOLEAN
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+  invitation RECORD;
+  user_email TEXT;
+BEGIN
+  -- Get current user's email
+  SELECT email INTO user_email FROM auth.users WHERE id = auth.uid();
+  
+  -- Get the invitation details
+  SELECT * INTO invitation
+  FROM public.company_invitations
+  WHERE token = invite_token
+    AND expires_at > now();
+  
+  -- Check if invitation exists and is valid
+  IF invitation IS NULL THEN
+    RAISE EXCEPTION 'Invalid or expired invitation token';
+  END IF;
+  
+  -- Check if user's email matches the invitation
+  IF user_email != invitation.email THEN
+    RAISE EXCEPTION 'This invitation was sent to a different email address';
+  END IF;
+  
+  -- Add the user to the company with the invited role
+  INSERT INTO public.company_members (
+    company_id,
+    user_id,
+    role,
+    invited_by,
+    invited_at,
+    joined_at
+  ) VALUES (
+    invitation.company_id,
+    auth.uid(),
+    invitation.role,
+    invitation.invited_by,
+    invitation.created_at,
+    now()
+  )
+  ON CONFLICT (company_id, user_id) DO UPDATE 
+  SET role = EXCLUDED.role,
+      joined_at = now();
+  
+  -- Delete the invitation
+  DELETE FROM public.company_invitations 
+  WHERE id = invitation.id;
+  
+  RETURN TRUE;
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql;
 ```
