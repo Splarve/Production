@@ -58,9 +58,9 @@ export default async function CompanyMembersPage({ params }: { params: { handle:
   const { data: hasPermission, error: permissionError } = await supabase.rpc(
     'user_has_permission',
     {
-      p_user_id: user.id,
-      p_company_id: company.id,
-      p_required_permission: 'invite_users'
+      user_id: user.id,
+      company_id: company.id,
+      required_permission: 'invite_users'
     }
   );
   

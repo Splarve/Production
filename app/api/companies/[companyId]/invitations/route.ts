@@ -2,12 +2,13 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 
-// GET: Fetch invitations for a company
 export async function GET(
   request: NextRequest,
   { params }: { params: { companyId: string } }
 ) {
   try {
+    const companyId = params.companyId;
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -17,25 +18,31 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Check if user has permission to view invitations
-    const { data: permission, error: permissionError } = await supabase.rpc(
-      'user_has_permission',
-      {
-        user_id: user.id,
-        company_id: params.companyId,
-        required_permission: 'invite_users'
-      }
-    );
+    // Check if user has appropriate role (owner, admin, or hr)
+    const { data: membership, error: membershipError } = await supabase
+      .from('company_members')
+      .select('role')
+      .eq('company_id', companyId)
+      .eq('user_id', user.id)
+      .single();
     
-    if (permissionError || !permission) {
-      return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+    if (membershipError || !membership) {
+      return NextResponse.json({ error: 'Not a member of this company' }, { status: 403 });
     }
     
-    // Get invitations for the company
+    // Check if user has appropriate role
+    if (!['owner', 'admin', 'hr'].includes(membership.role)) {
+      return NextResponse.json(
+        { error: 'You do not have permission to view company invitations' }, 
+        { status: 403 }
+      );
+    }
+    
+    // User has permission, get invitations
     const { data: invitations, error: invitationsError } = await supabase
       .from('company_invitations')
       .select('*')
-      .eq('company_id', params.companyId)
+      .eq('company_id', companyId)
       .order('created_at', { ascending: false });
     
     if (invitationsError) {

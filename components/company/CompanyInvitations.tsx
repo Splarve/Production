@@ -27,7 +27,6 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/tooltip';
-import { createClient } from '@/utils/supabase/client';
 
 export interface Invitation {
   id: string;
@@ -40,12 +39,6 @@ export interface Invitation {
   created_at: string;
   updated_at: string;
   expires_at: string;
-  inviter?: {
-    email?: string;
-    user_metadata?: {
-      full_name?: string;
-    }
-  }
 }
 
 interface CompanyInvitationsProps {
@@ -57,147 +50,70 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
-  const [canInvite, setCanInvite] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Function to check if user has a specific permission
-  async function hasPermission(companyId: string, permission: string): Promise<boolean> {
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) return false;
-      
-      const { data, error } = await supabase.rpc(
-        'user_has_permission',
-        {
-          p_user_id: user.id,
-          p_company_id: companyId,
-          p_required_permission: permission
-        }
-      );
-      
-      if (error) {
-        console.error('Error checking permission:', error);
-        return false;
-      }
-      
-      return !!data;
-    } catch (error) {
-      console.error('Error in hasPermission:', error);
-      return false;
-    }
+  // Owners always have permission to invite
+  const canManageInvitations = ['owner', 'admin', 'hr'].includes(userRole);
+
+  if (!canManageInvitations) {
+    return null;
   }
 
-  // Function to get invitations for this company
-  async function getCompanyInvitations(companyId: string): Promise<Invitation[]> {
-    try {
-      // First, try to use the API endpoint
-      try {
-        const response = await fetch(`/api/companies/${companyId}/invitations`);
-        
-        if (!response.ok) {
-          throw new Error('API request failed');
-        }
-        
-        const { invitations } = await response.json();
-        return invitations || [];
-      } catch (apiError) {
-        console.error('Error fetching from API:', apiError);
-        
-        // Fallback to direct query
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('company_invitations')
-          .select(`
-            *,
-            inviter:invited_by (
-              email,
-              user_metadata
-            )
-          `)
-          .eq('company_id', companyId)
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          console.error('Error fetching company invitations:', error);
-          return [];
-        }
-        
-        return data;
-      }
-    } catch (error) {
-      console.error('Error in getCompanyInvitations:', error);
-      return [];
-    }
-  }
-
-  // Function to cancel an invitation
-  async function cancelInvitation(
-    companyId: string,
-    invitationId: string
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      const response = await fetch(`/api/companies/${companyId}/invitations/${invitationId}`, {
-        method: 'DELETE',
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        return { success: false, error: result.error };
-      }
-      
-      return { success: true };
-    } catch (error) {
-      console.error('Error canceling invitation:', error);
-      return { success: false, error: 'Failed to cancel invitation' };
-    }
-  }
-
-  const fetchInvitations = async () => {
+  // Function to fetch invitations using server API
+  async function fetchInvitations() {
     try {
       setLoading(true);
-      const data = await getCompanyInvitations(companyId);
-      setInvitations(data);
-    } catch (error) {
-      console.error('Error fetching company invitations:', error);
+      setError(null);
+      
+      // Use our server API instead of direct Supabase access
+      const response = await fetch(`/api/companies/${companyId}/members/invitations`);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to fetch invitations');
+      }
+      
+      const data = await response.json();
+      setInvitations(data.invitations || []);
+    } catch (error: any) {
+      console.error('Error fetching invitations:', error);
+      setError(error.message || 'Failed to load invitations');
+      setInvitations([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const checkPermissions = async () => {
-      // Owners always have permission to invite
-      if (userRole === 'owner') {
-        setCanInvite(true);
-      } else {
-        const canInviteUsers = await hasPermission(companyId, 'invite_users');
-        setCanInvite(canInviteUsers);
-      }
-    };
-
-    checkPermissions();
     fetchInvitations();
-  }, [companyId, userRole]);
+  }, [companyId]);
 
-  const handleCancelInvitation = async (id: string) => {
+  // Function to cancel an invitation
+  async function handleCancelInvitation(id: string) {
     if (!confirm('Are you sure you want to cancel this invitation?')) {
       return;
     }
 
     setCancelingId(id);
     try {
-      const result = await cancelInvitation(companyId, id);
-      if (result.success) {
-        // Remove from the list
-        setInvitations(prev => prev.filter(inv => inv.id !== id));
-      } else {
-        console.error('Failed to cancel invitation:', result.error);
-        alert(`Failed to cancel invitation: ${result.error}`);
+      const response = await fetch(`/api/companies/${companyId}/members/invitations`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ invitationId: id }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel invitation');
       }
-    } catch (error) {
+      
+      // Remove from the list on success
+      setInvitations(prev => prev.filter(inv => inv.id !== id));
+    } catch (error: any) {
       console.error('Error canceling invitation:', error);
+      alert(error.message || 'An error occurred while canceling the invitation');
     } finally {
       setCancelingId(null);
     }
@@ -254,7 +170,7 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
             Manage invitations to join your company
           </CardDescription>
         </div>
-        {canInvite && (
+        {canManageInvitations && (
           <InviteMembers 
             companyId={companyId} 
             userRole={userRole}
@@ -266,6 +182,20 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
         {loading ? (
           <div className="flex justify-center items-center h-32">
             <Loader2 size={24} className="animate-spin text-muted-foreground" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 text-red-500">
+            <AlertCircle className="mx-auto h-12 w-12 text-red-500/50 mb-3" />
+            <h3 className="font-medium text-lg">Error Loading Invitations</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="mt-4"
+              onClick={fetchInvitations}
+            >
+              Try Again
+            </Button>
           </div>
         ) : invitations.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
@@ -298,7 +228,6 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Invited By</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Sent</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -309,11 +238,6 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
                   <TableRow key={invitation.id}>
                     <TableCell className="font-medium">{invitation.email}</TableCell>
                     <TableCell className="capitalize">{invitation.role}</TableCell>
-                    <TableCell>
-                      {invitation.inviter?.user_metadata?.full_name || 
-                       invitation.inviter?.email || 
-                       'Unknown'}
-                    </TableCell>
                     <TableCell>{getStatusBadge(invitation)}</TableCell>
                     <TableCell>
                       <TooltipProvider>
