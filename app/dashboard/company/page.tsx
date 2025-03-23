@@ -1,10 +1,11 @@
-// app/dashboard/company/page.tsx
+// app/dashboard/company/page.tsx (modified to include user invitations)
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Building, PlusCircle } from 'lucide-react';
+import { UserInvitations } from '@/components/invitations/UserInvitations';
 
 export default async function CompanyDashboard() {
   const supabase = await createClient();
@@ -60,6 +61,9 @@ export default async function CompanyDashboard() {
           </Button>
         </form>
       </div>
+      
+      {/* Display any pending invitations the user has */}
+      <UserInvitations />
       
       {!hasCompanies ? (
         <div className="grid gap-6">

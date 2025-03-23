@@ -1,4 +1,4 @@
-// app/dashboard/company/[handle]/page.tsx
+// app/dashboard/company/[handle]/page.tsx (modified to include team management link)
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
@@ -51,6 +51,16 @@ export default async function CompanyPage({ params }: { params: { handle: string
   }
   
   const isOwnerOrAdmin = membership.role === 'owner' || membership.role === 'admin';
+  
+  // Check if user has permission to manage members
+  const { data: canManageMembers } = await supabase.rpc(
+    'user_has_permission',
+    {
+      user_id: user.id,
+      company_id: company.id,
+      required_permission: 'invite_users'
+    }
+  );
   
   return (
     <div className="container mx-auto py-8 px-4">
@@ -139,16 +149,14 @@ export default async function CompanyPage({ params }: { params: { handle: string
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <p>This is where team members will be displayed.</p>
+              <p>View and manage your company team members and invitations.</p>
               
-              {isOwnerOrAdmin && (
-                <Button asChild variant="outline" size="sm">
-                  <Link href={`/dashboard/company/${company.handle}/members`}>
-                    <Users className="mr-2 h-4 w-4" />
-                    Manage Team
-                  </Link>
-                </Button>
-              )}
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/dashboard/company/${company.handle}/members`}>
+                  <Users className="mr-2 h-4 w-4" />
+                  {canManageMembers ? 'Manage Team Members' : 'View Team Members'}
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
