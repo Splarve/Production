@@ -13,90 +13,83 @@ export interface Invitation {
   created_at: string;
   updated_at: string;
   expires_at: string;
+  company_name?: string;
+  company_handle?: string;
+  company_logo_url?: string;
+  inviter_name?: string;
   companies?: {
     id: string;
     name: string;
     handle: string;
     logo_url?: string;
   };
-  inviter?: {
-    email: string;
-    user_metadata: {
-      full_name?: string;
-    };
-  };
-}
-
-/**
- * Get all invitations for the current company
- */
-export async function getCompanyInvitations(companyId: string): Promise<Invitation[]> {
-  try {
-    const supabase = createClient();
-    
-    const { data, error } = await supabase
-      .from('company_invitations')
-      .select(`
-        *,
-        inviter:invited_by (
-          email,
-          user_metadata
-        )
-      `)
-      .eq('company_id', companyId)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching company invitations:', error);
-      return [];
-    }
-    
-    return data || [];
-  } catch (error) {
-    console.error('Error in getCompanyInvitations:', error);
-    return [];
-  }
 }
 
 /**
  * Get all pending invitations for the current user
+ * Uses secure RLS-protected methods to access invitations
  */
 export async function getUserInvitations(): Promise<Invitation[]> {
   try {
     const supabase = createClient();
     
-    // Get current user's email
-    const { data: { user } } = await supabase.auth.getUser();
+    // Get current user's session - this will verify authentication
+    const { data: { session } } = await supabase.auth.getSession();
     
-    if (!user) {
+    if (!session) {
       return [];
     }
     
-    const { data, error } = await supabase
-      .from('company_invitations')
-      .select(`
-        *,
-        companies:company_id (
-          id,
-          name,
-          handle,
-          logo_url
-        ),
-        inviter:invited_by (
-          email,
-          user_metadata
-        )
-      `)
-      .eq('email', user.email)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching user invitations:', error);
-      return [];
+    // Option 1: Call secured RPC function (most secure approach)
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('get_user_invitations');
+      
+    if (!rpcError && rpcData) {
+      return rpcData;
     }
     
-    return data || [];
+    console.warn('RPC function unavailable, falling back to API');
+    
+    // Option 2: Fallback to secured API endpoint
+    try {
+      const response = await fetch('/api/invitations');
+      
+      if (!response.ok) {
+        throw new Error('API request failed');
+      }
+      
+      const { invitations } = await response.json();
+      return invitations || [];
+    } catch (apiError) {
+      console.error('Error fetching from API:', apiError);
+      
+      // Option 3: Last resort - direct query with RLS protection
+      const { data, error } = await supabase
+        .from('company_invitations')
+        .select(`
+          *,
+          companies:company_id (
+            id,
+            name,
+            handle,
+            logo_url
+          )
+        `)
+        .eq('email', session.user.email)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching user invitations:', error);
+        return [];
+      }
+      
+      // Apply minimal safe transformation
+      return data.map(inv => ({
+        ...inv,
+        inviter_name: 'Company Member' // Generic placeholder for privacy
+      }));
+    }
   } catch (error) {
     console.error('Error in getUserInvitations:', error);
     return [];
@@ -113,8 +106,6 @@ export async function sendInvitation(
   message?: string
 ): Promise<{ success: boolean; invitation?: Invitation; error?: string }> {
   try {
-    const supabase = createClient();
-    
     // Make API call to create invitation
     const response = await fetch(`/api/companies/${companyId}/invitations`, {
       method: 'POST',
@@ -130,6 +121,8 @@ export async function sendInvitation(
       return { success: false, error: result.error };
     }
     
+    const supabase = createClient();
+    
     // Get company details for email
     const { data: company } = await supabase
       .from('companies')
@@ -137,7 +130,7 @@ export async function sendInvitation(
       .eq('id', companyId)
       .single();
     
-    // Get current user for email
+    // Get current user for email - getting only necessary fields
     const { data: { user } } = await supabase.auth.getUser();
     
     if (company && user) {
@@ -230,65 +223,5 @@ export async function rejectInvitation(
   } catch (error) {
     console.error('Error rejecting invitation:', error);
     return { success: false, error: 'Failed to reject invitation' };
-  }
-}
-
-/**
- * Change a user's role in a company
- */
-export async function changeUserRole(
-  companyId: string,
-  userId: string,
-  newRole: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const response = await fetch(`/api/companies/${companyId}/members/${userId}/role`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ role: newRole }),
-    });
-    
-    const result = await response.json();
-    
-    if (!response.ok || !result.success) {
-      return { success: false, error: result.error || result.message };
-    }
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error changing user role:', error);
-    return { success: false, error: 'Failed to change user role' };
-  }
-}
-
-/**
- * Check if the current user has a specific permission in a company
- */
-export async function hasPermission(
-  companyId: string, 
-  permission: string
-): Promise<boolean> {
-  try {
-    const supabase = createClient();
-    
-    const { data, error } = await supabase.rpc(
-      'user_has_permission',
-      {
-        company_id: companyId,
-        required_permission: permission
-      }
-    );
-    
-    if (error) {
-      console.error('Error checking permission:', error);
-      return false;
-    }
-    
-    return !!data;
-  } catch (error) {
-    console.error('Error in hasPermission:', error);
-    return false;
   }
 }

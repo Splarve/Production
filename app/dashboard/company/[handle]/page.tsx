@@ -1,4 +1,4 @@
-// app/dashboard/company/[handle]/page.tsx (modified to include team management link)
+// app/dashboard/company/[handle]/page.tsx
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
@@ -6,7 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Building, Users, Edit, Settings } from 'lucide-react';
 
-export default async function CompanyPage({ params }: { params: { handle: string } }) {
+interface CompanyPageProps {
+  params: Promise<{ handle: string }>;
+}
+
+export default async function CompanyPage({ params }: CompanyPageProps) {
+  // Await the params object to get the handle
+  const { handle } = await params;
+  
   const supabase = await createClient();
   
   // Get current user
@@ -31,7 +38,7 @@ export default async function CompanyPage({ params }: { params: { handle: string
   const { data: company, error: companyError } = await supabase
     .from('companies')
     .select('*')
-    .eq('handle', params.handle)
+    .eq('handle', handle)
     .single();
   
   if (!company || companyError) {

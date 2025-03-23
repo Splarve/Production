@@ -1,161 +1,171 @@
-// components/invitations/UserInvitations.tsx
 'use client';
-
+// components/invitations/UserInvitations.tsx
 import { useState, useEffect } from 'react';
-import { Building, UserPlus, Check, X, Clock } from 'lucide-react';
-import { 
-  Card, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription, 
-  CardContent
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { getUserInvitations, acceptInvitation, rejectInvitation, Invitation } from '@/utils/invitations';
-import { formatDistanceToNow } from 'date-fns';
+import { Invitation, acceptInvitation, rejectInvitation, getUserInvitations } from '@/utils/invitations';
+import { AlertCircle, Check, X, Building } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export function UserInvitations() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [processingIds, setProcessingIds] = useState<Record<string, boolean>>({});
-
+  const [error, setError] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  
+  const router = useRouter();
+  
   useEffect(() => {
     const fetchInvitations = async () => {
       try {
         setLoading(true);
-        const data = await getUserInvitations();
-        setInvitations(data);
-      } catch (error) {
-        console.error('Error fetching invitations:', error);
+        const invitationData = await getUserInvitations();
+        setInvitations(invitationData);
+      } catch (err) {
+        console.error('Error fetching invitations:', err);
+        setError('Could not load invitations');
       } finally {
         setLoading(false);
       }
     };
-
+    
     fetchInvitations();
   }, []);
-
-  const handleAccept = async (id: string) => {
-    setProcessingIds(prev => ({ ...prev, [id]: true }));
+  
+  const handleAccept = async (invitationId: string) => {
     try {
-      const result = await acceptInvitation(id);
+      setProcessingId(invitationId);
+      const result = await acceptInvitation(invitationId);
+      
       if (result.success) {
         // Remove from the list
-        setInvitations(prev => prev.filter(inv => inv.id !== id));
+        setInvitations(invitations.filter(inv => inv.id !== invitationId));
+        // Refresh the page to show new company
+        router.refresh();
       } else {
-        console.error('Failed to accept invitation:', result.error);
-        alert(`Failed to accept invitation: ${result.error}`);
+        setError(result.error || 'Failed to accept invitation');
       }
-    } catch (error) {
-      console.error('Error accepting invitation:', error);
+    } catch (err) {
+      console.error('Error accepting invitation:', err);
+      setError('Failed to accept invitation');
     } finally {
-      setProcessingIds(prev => ({ ...prev, [id]: false }));
+      setProcessingId(null);
     }
   };
-
-  const handleReject = async (id: string) => {
-    setProcessingIds(prev => ({ ...prev, [id]: true }));
+  
+  const handleReject = async (invitationId: string) => {
     try {
-      const result = await rejectInvitation(id);
+      setProcessingId(invitationId);
+      const result = await rejectInvitation(invitationId);
+      
       if (result.success) {
         // Remove from the list
-        setInvitations(prev => prev.filter(inv => inv.id !== id));
+        setInvitations(invitations.filter(inv => inv.id !== invitationId));
       } else {
-        console.error('Failed to reject invitation:', result.error);
-        alert(`Failed to reject invitation: ${result.error}`);
+        setError(result.error || 'Failed to reject invitation');
       }
-    } catch (error) {
-      console.error('Error rejecting invitation:', error);
+    } catch (err) {
+      console.error('Error rejecting invitation:', err);
+      setError('Failed to reject invitation');
     } finally {
-      setProcessingIds(prev => ({ ...prev, [id]: false }));
+      setProcessingId(null);
     }
   };
-
-  if (loading) {
-    return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Loading invitations...</CardTitle>
-        </CardHeader>
-      </Card>
-    );
+  
+  // Skip rendering if no invitations and not loading
+  if (!loading && invitations.length === 0) {
+    return null;
   }
-
-  if (invitations.length === 0) {
-    return null; // Don't show anything if there are no invitations
-  }
-
+  
   return (
-    <Card className="w-full mb-6">
+    <Card className="mb-6">
       <CardHeader>
-        <CardTitle className="text-xl flex items-center gap-2">
-          <UserPlus size={20} className="text-primary" />
-          Company Invitations
-        </CardTitle>
-        <CardDescription>
-          You have {invitations.length} pending invitation{invitations.length !== 1 ? 's' : ''}
-        </CardDescription>
+        <CardTitle>Invitations</CardTitle>
+        <CardDescription>Pending company invitations</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {invitations.map((invitation) => (
-            <div 
-              key={invitation.id} 
-              className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-lg border"
-            >
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  {invitation.companies?.logo_url ? (
-                    <img 
-                      src={invitation.companies.logo_url}
-                      alt={invitation.companies?.name}
-                      className="h-8 w-8 rounded-full object-cover"
-                    />
-                  ) : (
-                    <Building className="h-5 w-5 text-primary" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="font-medium">
-                    {invitation.companies?.name || 'Company'}
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Invited by {invitation.inviter?.user_metadata?.full_name || invitation.inviter?.email} to join as {invitation.role}
-                  </p>
-                  {invitation.message && (
-                    <p className="text-sm mt-1 italic">{invitation.message}</p>
-                  )}
-                  <div className="text-xs text-muted-foreground mt-1 flex items-center">
-                    <Clock size={12} className="mr-1" />
-                    Expires {formatDistanceToNow(new Date(invitation.expires_at), { addSuffix: true })}
+        {loading ? (
+          <div className="py-4 text-center text-muted-foreground">Loading invitations...</div>
+        ) : error ? (
+          <div className="p-3 rounded-md bg-red-50 text-red-700 flex items-start gap-2">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        ) : invitations.length === 0 ? (
+          <div className="py-4 text-center text-muted-foreground">No pending invitations</div>
+        ) : (
+          <div className="space-y-4">
+            {invitations.map((invitation) => {
+              // Get company info from either flat or nested structure
+              const companyName = invitation.company_name || invitation.companies?.name;
+              const companyLogo = invitation.company_logo_url || invitation.companies?.logo_url;
+              // Use safe inviter name from either structure, with fallback
+              const inviterName = invitation.inviter_name || 'Company Member';
+              
+              return (
+                <div 
+                  key={invitation.id}
+                  className="flex items-start justify-between p-4 border rounded-lg"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      {companyLogo ? (
+                        <img 
+                          src={companyLogo}
+                          alt={companyName || 'Company'}
+                          className="h-8 w-8 rounded-full object-cover"
+                        />
+                      ) : (
+                        <Building className="h-5 w-5 text-primary" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-medium">{companyName || 'Company'}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium">{inviterName}</span> invited you to join as <span className="font-medium">{invitation.role}</span>
+                      </p>
+                      {invitation.message && (
+                        <p className="mt-2 text-sm italic">"{invitation.message}"</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm" 
+                      variant="outline" 
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      disabled={!!processingId}
+                      onClick={() => handleReject(invitation.id)}
+                    >
+                      {processingId === invitation.id ? (
+                        <span className="animate-pulse">Processing...</span>
+                      ) : (
+                        <>
+                          <X className="mr-1 h-4 w-4" />
+                          Decline
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={!!processingId}
+                      onClick={() => handleAccept(invitation.id)}
+                    >
+                      {processingId === invitation.id ? (
+                        <span className="animate-pulse">Processing...</span>
+                      ) : (
+                        <>
+                          <Check className="mr-1 h-4 w-4" />
+                          Accept
+                        </>
+                      )}
+                    </Button>
                   </div>
                 </div>
-              </div>
-              <div className="flex gap-2 ml-auto">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleReject(invitation.id)}
-                  disabled={processingIds[invitation.id]}
-                  className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                >
-                  <X size={16} className="mr-1" />
-                  Decline
-                </Button>
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => handleAccept(invitation.id)}
-                  disabled={processingIds[invitation.id]}
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  <Check size={16} className="mr-1" />
-                  Accept
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

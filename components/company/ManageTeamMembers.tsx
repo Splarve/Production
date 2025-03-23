@@ -36,8 +36,6 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Users, MoreHorizontal, Shield, Crown, UserCheck, MessageSquare, User, Loader2 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
-import { hasPermission, changeUserRole } from '@/utils/invitations';
-
 // Role hierarchy for comparison
 const ROLE_VALUES = {
   'owner': 5,
