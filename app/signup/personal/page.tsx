@@ -1,60 +1,58 @@
-'use client'
 // app/signup/personal/page.tsx
-import { useState } from 'react'
-import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { AuthLayout } from '@/components/auth/auth-layout'
-import { AuthCard } from '@/components/auth/auth-card'
-import { AuthButton } from '@/components/auth/auth-button'
-import { signInWithGoogle } from '@/utils/auth/oauth'
-import { motion } from 'framer-motion'
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { AuthLayout } from '@/components/auth/auth-layout';
+import { AuthCard } from '@/components/auth/auth-card';
+import { AuthProviderButtons } from '@/components/auth/auth-provider-buttons';
+import { AuthForm } from '@/components/auth/auth-form';
+import { motion } from 'framer-motion';
 
 export default function PersonalSignupPage() {
-  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   
-  const searchParams = useSearchParams()
-  const error = searchParams.get('error')
-  const message = searchParams.get('message')
-
-  async function handleGoogleSignUp() {
-    try {
-      setIsLoading(true)
-      await signInWithGoogle('personal')
-    } catch (error) {
-      console.error('Google sign up error:', error)
-      // Error will be handled by the OAuth callback
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get('error');
+  
+  // Use URL params or state
+  const displayError = error || urlError;
 
   return (
     <AuthLayout type="personal" mode="signup">
       <AuthCard 
         title="Create Your Account" 
         subtitle="Sign up to find your dream job"
-        error={error}
-        message={message}
+        error={displayError}
+        message={success ? "Check your email for a confirmation link to complete your signup" : null}
       >
-        <div className="space-y-6">
-          <AuthButton
-            type="button"
-            onClick={handleGoogleSignUp}
-            isLoading={isLoading}
-            variant="primary"
-            className="flex items-center justify-center gap-2"
-          >
-            <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
-              <g transform="matrix(1, 0, 0, 1, 27.009001, -39.238998)">
-                <path fill="#4285F4" d="M -3.264 51.509 C -3.264 50.719 -3.334 49.969 -3.454 49.239 L -14.754 49.239 L -14.754 53.749 L -8.284 53.749 C -8.574 55.229 -9.424 56.479 -10.684 57.329 L -10.684 60.329 L -6.824 60.329 C -4.564 58.239 -3.264 55.159 -3.264 51.509 Z" />
-                <path fill="#34A853" d="M -14.754 63.239 C -11.514 63.239 -8.804 62.159 -6.824 60.329 L -10.684 57.329 C -11.764 58.049 -13.134 58.489 -14.754 58.489 C -17.884 58.489 -20.534 56.379 -21.484 53.529 L -25.464 53.529 L -25.464 56.619 C -23.494 60.539 -19.444 63.239 -14.754 63.239 Z" />
-                <path fill="#FBBC05" d="M -21.484 53.529 C -21.734 52.809 -21.864 52.039 -21.864 51.239 C -21.864 50.439 -21.724 49.669 -21.484 48.949 L -21.484 45.859 L -25.464 45.859 C -26.284 47.479 -26.754 49.299 -26.754 51.239 C -26.754 53.179 -26.284 54.999 -25.464 56.619 L -21.484 53.529 Z" />
-                <path fill="#EA4335" d="M -14.754 43.989 C -12.984 43.989 -11.404 44.599 -10.154 45.789 L -6.734 42.369 C -8.804 40.429 -11.514 39.239 -14.754 39.239 C -19.444 39.239 -23.494 41.939 -25.464 45.859 L -21.484 48.949 C -20.534 46.099 -17.884 43.989 -14.754 43.989 Z" />
-              </g>
-            </svg>
-            {isLoading ? 'Signing up...' : 'Sign up with Google'}
-          </AuthButton>
-        </div>
+        {!success ? (
+          <div className="space-y-6">
+            <AuthProviderButtons 
+              type="personal" 
+              onError={(err) => setError(err)}
+            />
+            
+            <AuthForm 
+              mode="signup" 
+              type="personal"
+              onSuccess={() => setSuccess(true)}
+              onError={(err) => setError(err)}
+            />
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <div className="mb-4 mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-lg font-medium">Verification email sent!</p>
+            <p className="text-muted-foreground mt-2">Please check your inbox and click the link to complete your registration.</p>
+          </div>
+        )}
           
         <motion.div 
           className="text-xs text-muted-foreground mt-6 text-center"
@@ -85,5 +83,5 @@ export default function PersonalSignupPage() {
         </div>
       </AuthCard>
     </AuthLayout>
-  )
+  );
 }
