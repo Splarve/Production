@@ -27,8 +27,26 @@ import {
   TooltipProvider,
   TooltipTrigger
 } from '@/components/ui/tooltip';
-import { getCompanyInvitations, cancelInvitation, Invitation } from '@/utils/invitations';
-import { hasPermission } from '@/utils/invitations';
+import { createClient } from '@/utils/supabase/client';
+
+export interface Invitation {
+  id: string;
+  company_id: string;
+  invited_by: string;
+  email: string;
+  role: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  message?: string;
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
+  inviter?: {
+    email?: string;
+    user_metadata?: {
+      full_name?: string;
+    }
+  }
+}
 
 interface CompanyInvitationsProps {
   companyId: string;
@@ -40,6 +58,101 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
   const [loading, setLoading] = useState(true);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [canInvite, setCanInvite] = useState(false);
+
+  // Function to check if user has a specific permission
+  async function hasPermission(companyId: string, permission: string): Promise<boolean> {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return false;
+      
+      const { data, error } = await supabase.rpc(
+        'user_has_permission',
+        {
+          p_user_id: user.id,
+          p_company_id: companyId,
+          p_required_permission: permission
+        }
+      );
+      
+      if (error) {
+        console.error('Error checking permission:', error);
+        return false;
+      }
+      
+      return !!data;
+    } catch (error) {
+      console.error('Error in hasPermission:', error);
+      return false;
+    }
+  }
+
+  // Function to get invitations for this company
+  async function getCompanyInvitations(companyId: string): Promise<Invitation[]> {
+    try {
+      // First, try to use the API endpoint
+      try {
+        const response = await fetch(`/api/companies/${companyId}/invitations`);
+        
+        if (!response.ok) {
+          throw new Error('API request failed');
+        }
+        
+        const { invitations } = await response.json();
+        return invitations || [];
+      } catch (apiError) {
+        console.error('Error fetching from API:', apiError);
+        
+        // Fallback to direct query
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('company_invitations')
+          .select(`
+            *,
+            inviter:invited_by (
+              email,
+              user_metadata
+            )
+          `)
+          .eq('company_id', companyId)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Error fetching company invitations:', error);
+          return [];
+        }
+        
+        return data;
+      }
+    } catch (error) {
+      console.error('Error in getCompanyInvitations:', error);
+      return [];
+    }
+  }
+
+  // Function to cancel an invitation
+  async function cancelInvitation(
+    companyId: string,
+    invitationId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch(`/api/companies/${companyId}/invitations/${invitationId}`, {
+        method: 'DELETE',
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        return { success: false, error: result.error };
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error canceling invitation:', error);
+      return { success: false, error: 'Failed to cancel invitation' };
+    }
+  }
 
   const fetchInvitations = async () => {
     try {
@@ -55,13 +168,18 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
 
   useEffect(() => {
     const checkPermissions = async () => {
-      const canInviteUsers = await hasPermission(companyId, 'invite_users');
-      setCanInvite(canInviteUsers);
+      // Owners always have permission to invite
+      if (userRole === 'owner') {
+        setCanInvite(true);
+      } else {
+        const canInviteUsers = await hasPermission(companyId, 'invite_users');
+        setCanInvite(canInviteUsers);
+      }
     };
 
     checkPermissions();
     fetchInvitations();
-  }, [companyId]);
+  }, [companyId, userRole]);
 
   const handleCancelInvitation = async (id: string) => {
     if (!confirm('Are you sure you want to cancel this invitation?')) {
@@ -192,7 +310,9 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
                     <TableCell className="font-medium">{invitation.email}</TableCell>
                     <TableCell className="capitalize">{invitation.role}</TableCell>
                     <TableCell>
-                      {invitation.inviter?.user_metadata?.full_name || invitation.inviter?.email || 'Unknown'}
+                      {invitation.inviter?.user_metadata?.full_name || 
+                       invitation.inviter?.email || 
+                       'Unknown'}
                     </TableCell>
                     <TableCell>{getStatusBadge(invitation)}</TableCell>
                     <TableCell>

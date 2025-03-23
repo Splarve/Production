@@ -36,6 +36,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Users, MoreHorizontal, Shield, Crown, UserCheck, MessageSquare, User, Loader2 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { InviteMembers } from '@/components/company/InviteMembers';
+
 // Role hierarchy for comparison
 const ROLE_VALUES = {
   'owner': 5,
@@ -52,6 +54,15 @@ const ROLE_ICONS = {
   'hr': UserCheck,
   'social': MessageSquare,
   'member': User
+};
+
+// Role descriptions for tooltips
+const ROLE_DESCRIPTIONS = {
+  'owner': 'Full control of the company, billing, and users',
+  'admin': 'Manage company profile, users, and view analytics',
+  'hr': 'Invite users and manage regular team members',
+  'social': 'View analytics and manage social content',
+  'member': 'Basic access to company content'
 };
 
 interface TeamMember {
@@ -77,9 +88,22 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
   const [loading, setLoading] = useState(true);
   const [changingRole, setChangingRole] = useState<string | null>(null);
   const [canChangeRoles, setCanChangeRoles] = useState(false);
+  const [canInviteUsers, setCanInviteUsers] = useState(false);
   
   // Get all available roles that this user can assign
   const availableRolesForUser = getAvailableRoleOptions(userRole);
+
+  useEffect(() => {
+    const checkPermissions = async () => {
+      const changeRolePermission = await hasPermission(companyId, 'change_user_roles');
+      const inviteUsersPermission = await hasPermission(companyId, 'invite_users');
+      setCanChangeRoles(changeRolePermission);
+      setCanInviteUsers(inviteUsersPermission);
+    };
+
+    checkPermissions();
+    fetchMembers();
+  }, [companyId]);
 
   const fetchMembers = async () => {
     try {
@@ -111,16 +135,6 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    const checkPermissions = async () => {
-      const canChange = await hasPermission(companyId, 'change_user_roles');
-      setCanChangeRoles(canChange);
-    };
-
-    checkPermissions();
-    fetchMembers();
-  }, [companyId]);
 
   const handleRoleChange = async (memberId: string, newRole: string) => {
     // Find current member's role
@@ -200,12 +214,69 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
     );
   }
 
+  // Check if user has a specific permission
+  async function hasPermission(companyId: string, permission: string): Promise<boolean> {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return false;
+      
+      const { data, error } = await supabase.rpc(
+        'user_has_permission',
+        {
+          p_user_id: user.id,
+          p_company_id: companyId,
+          p_required_permission: permission
+        }
+      );
+      
+      if (error) {
+        console.error('Error checking permission:', error);
+        return false;
+      }
+      
+      return !!data;
+    } catch (error) {
+      console.error('Error in hasPermission:', error);
+      return false;
+    }
+  }
+
+  // Change a user's role
+  async function changeUserRole(
+    companyId: string,
+    targetUserId: string,
+    newRole: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await fetch(`/api/companies/${companyId}/members/${targetUserId}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ role: newRole }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok || !result.success) {
+        return { success: false, error: result.error || result.message };
+      }
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error changing user role:', error);
+      return { success: false, error: 'Failed to change user role' };
+    }
+  }
+
   // Render role badge with appropriate icon
   const RoleBadge = ({ role }: { role: string }) => {
     const IconComponent = ROLE_ICONS[role] || User;
     
     return (
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1" title={ROLE_DESCRIPTIONS[role]}>
         <IconComponent size={14} className="text-primary" />
         <span className="capitalize">{role}</span>
       </div>
@@ -214,14 +285,23 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="text-xl flex items-center gap-2">
-          <Users size={20} className="text-primary" />
-          Team Members
-        </CardTitle>
-        <CardDescription>
-          Manage your company's team members and their roles
-        </CardDescription>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <div>
+          <CardTitle className="text-xl flex items-center gap-2">
+            <Users size={20} className="text-primary" />
+            Team Members
+          </CardTitle>
+          <CardDescription>
+            Manage your company's team members and their roles
+          </CardDescription>
+        </div>
+        {canInviteUsers && (
+          <InviteMembers 
+            companyId={companyId} 
+            userRole={userRole}
+            onInviteSent={fetchMembers}
+          />
+        )}
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -233,8 +313,24 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
             <Users className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
             <h3 className="font-medium text-lg">No team members</h3>
             <p className="mt-1">
-              Your company doesn't have any team members yet.
+              {canInviteUsers 
+                ? "Invite team members to collaborate in your company." 
+                : "There are no team members in your company yet."}
             </p>
+            {canInviteUsers && (
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => {
+                  // Find and click the InviteMembers trigger button
+                  const button = document.querySelector('[data-state="closed"][aria-haspopup="dialog"]') as HTMLButtonElement;
+                  if (button) button.click();
+                }}
+              >
+                <User size={16} className="mr-2" />
+                Invite People
+              </Button>
+            )}
           </div>
         ) : (
           <div className="rounded-md border">
@@ -243,6 +339,7 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Email</TableHead>
                   {canChangeRoles && <TableHead className="text-right">Actions</TableHead>}
                 </TableRow>
               </TableHeader>
@@ -270,16 +367,16 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
                         </Avatar>
                         <div>
                           <div className="font-medium">
-                            {member.user?.user_metadata?.full_name || 'Anonymous User'}
+                            {member.user?.user_metadata?.full_name || 'User'}
                             {isCurrentUser && <span className="ml-2 text-xs text-muted-foreground">(You)</span>}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {member.user?.email}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <RoleBadge role={member.role} />
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {member.user?.email}
                       </TableCell>
                       {canChangeRoles && (
                         <TableCell className="text-right">
@@ -293,7 +390,7 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="sm">
                                     <MoreHorizontal size={16} />
-                                    <span className="sr-only">Open menu</span>
+                                    <span className="sr-only">Change role</span>
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">

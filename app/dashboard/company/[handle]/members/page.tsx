@@ -5,8 +5,12 @@ import { createClient } from '@/utils/supabase/server';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { ManageTeamMembers } from '@/components/company/ManageTeamMembers';
+import { CompanyInvitations } from '@/components/company/CompanyInvitations';
 
-export default async function CompanyMembersPage({ params }: { params: { handle: string } }) {
+export default async function CompanyMembersPage({ params }: { params: { handle: Promise<string> } }) {
+  // Await the params.handle value
+  const handle = await params.handle;
+  
   const supabase = await createClient();
   
   // Get current user
@@ -31,7 +35,7 @@ export default async function CompanyMembersPage({ params }: { params: { handle:
   const { data: company, error: companyError } = await supabase
     .from('companies')
     .select('*')
-    .eq('handle', params.handle)
+    .eq('handle', handle)
     .single();
   
   if (!company || companyError) {
@@ -51,17 +55,17 @@ export default async function CompanyMembersPage({ params }: { params: { handle:
   }
   
   // Check permissions for viewing members
-  const { data: hasPermission } = await supabase.rpc(
+  const { data: hasPermission, error: permissionError } = await supabase.rpc(
     'user_has_permission',
     {
-      user_id: user.id,
-      company_id: company.id,
-      required_permission: 'invite_users'
+      p_user_id: user.id,
+      p_company_id: company.id,
+      p_required_permission: 'invite_users'
     }
   );
   
   if (!hasPermission) {
-    return redirect(`/dashboard/company/${params.handle}?error=You+do+not+have+permission+to+manage+team+members`);
+    return redirect(`/dashboard/company/${handle}?error=You+do+not+have+permission+to+manage+team+members`);
   }
   
   return (
@@ -72,7 +76,7 @@ export default async function CompanyMembersPage({ params }: { params: { handle:
         className="mb-6" 
         asChild
       >
-        <Link href={`/dashboard/company/${params.handle}`}>
+        <Link href={`/dashboard/company/${handle}`}>
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to Company
         </Link>
       </Button>
@@ -86,7 +90,10 @@ export default async function CompanyMembersPage({ params }: { params: { handle:
       
       <div className="grid gap-6">
         {/* Invitations Management */}
-        <CompanyInvitations companyId={company.id} userRole={membership.role} />
+        <CompanyInvitations 
+          companyId={company.id} 
+          userRole={membership.role} 
+        />
         
         {/* Team Members Management */}
         <ManageTeamMembers 
