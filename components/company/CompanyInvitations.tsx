@@ -1,4 +1,4 @@
-// components/company/CompanyInvitations.tsx
+// components/company/CompanyInvitations.tsx - FIXED VERSION
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -52,21 +52,19 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Owners always have permission to invite
-  const canManageInvitations = ['owner', 'admin', 'hr'].includes(userRole);
-
-  if (!canManageInvitations) {
-    return null;
-  }
+  // Determine if user can manage invitations
+  const canInvite = ['owner', 'admin', 'hr'].includes(userRole);
 
   // Function to fetch invitations using server API
-  async function fetchInvitations() {
+  const fetchInvitations = async () => {
+    console.log("Fetching invitations for company:", companyId);
     try {
       setLoading(true);
       setError(null);
       
-      // Use our server API instead of direct Supabase access
-      const response = await fetch(`/api/companies/${companyId}/members/invitations`);
+      // Use the correct API endpoint
+      const response = await fetch(`/api/companies/${companyId}/invitations`);
+      console.log("Response status:", response.status);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -74,6 +72,7 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
       }
       
       const data = await response.json();
+      console.log("Invitations data received:", data);
       setInvitations(data.invitations || []);
     } catch (error: any) {
       console.error('Error fetching invitations:', error);
@@ -84,8 +83,13 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
     }
   };
 
+  // Fetch invitations when component mounts
   useEffect(() => {
-    fetchInvitations();
+    if (companyId) {
+      fetchInvitations();
+    } else {
+      setLoading(false);
+    }
   }, [companyId]);
 
   // Function to cancel an invitation
@@ -117,7 +121,7 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
     } finally {
       setCancelingId(null);
     }
-  };
+  }
 
   // Get status badge based on invitation status
   const getStatusBadge = (invitation: Invitation) => {
@@ -161,6 +165,11 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
     }
   };
 
+  // If user doesn't have permission, don't render the component
+  if (!canInvite) {
+    return null;
+  }
+
   return (
     <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -170,7 +179,7 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
             Manage invitations to join your company
           </CardDescription>
         </div>
-        {canManageInvitations && (
+        {canInvite && (
           <InviteMembers 
             companyId={companyId} 
             userRole={userRole}

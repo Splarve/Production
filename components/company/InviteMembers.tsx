@@ -128,34 +128,36 @@ export function InviteMembers({ companyId, userRole, onInviteSent }: InviteMembe
   }
 
   // Function to send invitation
-  async function sendInvitation(
-    companyId: string,
-    email: string,
-    role: string,
-    message?: string
-  ): Promise<{ success: boolean; invitation?: any; error?: string }> {
-    try {
-      // Make API call to create invitation
-      const response = await fetch(`/api/companies/${companyId}/invitations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, role, message }),
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        return { success: false, error: result.error };
-      }
-      
-      return { success: true, invitation: result.invitation };
-    } catch (error: any) {
-      console.error('Error sending invitation:', error);
-      return { success: false, error: 'Failed to send invitation' };
+// Modified sendInvitation function in InviteMembers component
+
+async function sendInvitation(
+  companyId: string,
+  email: string,
+  role: string,
+  message?: string
+): Promise<{ success: boolean; invitation?: any; error?: string }> {
+  try {
+    // Call our server-side API endpoint instead of direct Supabase access
+    const response = await fetch(`/api/companies/${companyId}/invitations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, role, message }),
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      return { success: false, error: result.error };
     }
+    
+    return { success: true, invitation: result.invitation };
+  } catch (error: any) {
+    console.error('Error sending invitation:', error);
+    return { success: false, error: 'Failed to send invitation' };
   }
+}
   
   return (
     <Dialog open={open} onOpenChange={setOpen}>
