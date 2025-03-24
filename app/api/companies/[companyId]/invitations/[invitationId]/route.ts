@@ -5,9 +5,13 @@ import { NextRequest, NextResponse } from 'next/server';
 // DELETE: Cancel an invitation
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { companyId: string, invitationId: string } }
+    { params }: { params: { companyId: Promise<string>, invitationId: Promise<string> } }
   ) {
     try {
+      // Await the dynamic parameters
+      const companyId = await params.companyId;
+      const invitationId = await params.invitationId;
+      
       const supabase = await createClient();
       
       // Get the current user
@@ -21,8 +25,8 @@ export async function DELETE(
       const { data: invitation, error: invitationError } = await supabase
         .from('company_invitations')
         .select('*')
-        .eq('id', params.invitationId)
-        .eq('company_id', params.companyId)
+        .eq('id', invitationId)
+        .eq('company_id', companyId)
         .single();
       
       if (invitationError || !invitation) {
@@ -36,7 +40,7 @@ export async function DELETE(
           'user_has_permission',
           {
             user_id: user.id,
-            company_id: params.companyId,
+            company_id: companyId,
             required_permission: 'invite_users'
           }
         );
@@ -50,7 +54,7 @@ export async function DELETE(
       const { error: deleteError } = await supabase
         .from('company_invitations')
         .delete()
-        .eq('id', params.invitationId);
+        .eq('id', invitationId);
       
       if (deleteError) {
         return NextResponse.json({ error: deleteError.message }, { status: 500 });

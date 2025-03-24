@@ -4,11 +4,12 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { companyId: Promise<string> } }
 ) {
   try {
-    // In Next.js, dynamic route params must be awaited
-    const companyId = params.companyId;
+    // Await the dynamic parameter
+    const datathing = await params
+    const companyId = await datathing.companyId;
     
     const supabase = await createClient();
     
@@ -51,11 +52,11 @@ export async function GET(
 // DELETE endpoint to cancel an invitation
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { companyId: Promise<string> } }
 ) {
   try {
-    // In Next.js, dynamic route params must be awaited
-    const companyId = params.companyId;
+    // Await the dynamic parameter
+    const companyId = await params.companyId;
     
     const { invitationId } = await request.json();
     

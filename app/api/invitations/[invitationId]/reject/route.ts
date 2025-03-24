@@ -5,15 +5,18 @@ import { NextRequest, NextResponse } from 'next/server';
 // POST: Reject an invitation
 export async function POST(
     request: NextRequest,
-    { params }: { params: { invitationId: string } }
+    { params }: { params: { invitationId: Promise<string> } }
   ) {
     try {
+      // Await the dynamic parameter
+      const invitationId = await params.invitationId;
+      
       const supabase = await createClient();
       
       // Call the reject_company_invitation function
       const { data, error } = await supabase.rpc(
         'reject_company_invitation',
-        { invitation_id: params.invitationId }
+        { invitation_id: invitationId }
       );
       
       if (error) {

@@ -4,10 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { companyId: Promise<string> } }
 ) {
   try {
-    const companyId = params.companyId;
+    // Await the companyId from params
+    const companyId = await params.companyId;
     
     const supabase = await createClient();
     
@@ -59,9 +60,12 @@ export async function GET(
 // POST: Create a new invitation
 export async function POST(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { companyId: Promise<string> } }
 ) {
   try {
+    // Await the companyId from params
+    const companyId = await params.companyId;
+    
     const supabase = await createClient();
     
     // Get the current user
@@ -76,7 +80,7 @@ export async function POST(
       'user_has_permission',
       {
         user_id: user.id,
-        company_id: params.companyId,
+        company_id: companyId,
         required_permission: 'invite_users'
       }
     );
@@ -101,7 +105,7 @@ export async function POST(
     const { data: userRole } = await supabase
       .from('company_members')
       .select('role')
-      .eq('company_id', params.companyId)
+      .eq('company_id', companyId)
       .eq('user_id', user.id)
       .single();
     
@@ -125,7 +129,7 @@ export async function POST(
     const { data: existingMember } = await supabase
       .from('company_members')
       .select('user_id')
-      .eq('company_id', params.companyId)
+      .eq('company_id', companyId)
       .eq('user_id', (
         await supabase
           .from('auth.users')
@@ -145,7 +149,7 @@ export async function POST(
     const { data: existingInvitation } = await supabase
       .from('company_invitations')
       .select('id')
-      .eq('company_id', params.companyId)
+      .eq('company_id', companyId)
       .eq('email', email)
       .eq('status', 'pending')
       .maybeSingle();
@@ -160,7 +164,7 @@ export async function POST(
     const { data: invitation, error: invitationError } = await supabase
       .from('company_invitations')
       .insert({
-        company_id: params.companyId,
+        company_id: companyId,
         invited_by: user.id,
         email,
         role,

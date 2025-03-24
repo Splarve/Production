@@ -9,7 +9,8 @@ import { CompanyInvitations } from '@/components/company/CompanyInvitations';
 
 export default async function CompanyMembersPage({ params }: { params: { handle: Promise<string> } }) {
   // Await the params.handle value
-  const handle = await params.handle;
+  const handlething = await params
+  const handle = await handlething.handle;
   
   const supabase = await createClient();
   
