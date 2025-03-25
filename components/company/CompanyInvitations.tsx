@@ -1,4 +1,4 @@
-// components/company/CompanyInvitations.tsx - FIXED VERSION
+// components/company/CompanyInvitations.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -57,14 +57,12 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
 
   // Function to fetch invitations using server API
   const fetchInvitations = async () => {
-    console.log("Fetching invitations for company:", companyId);
     try {
       setLoading(true);
       setError(null);
       
       // Use the correct API endpoint
       const response = await fetch(`/api/companies/${companyId}/invitations`);
-      console.log("Response status:", response.status);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -72,10 +70,8 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
       }
       
       const data = await response.json();
-      console.log("Invitations data received:", data);
       setInvitations(data.invitations || []);
     } catch (error: any) {
-      console.error('Error fetching invitations:', error);
       setError(error.message || 'Failed to load invitations');
       setInvitations([]);
     } finally {
@@ -100,12 +96,8 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
 
     setCancelingId(id);
     try {
-      const response = await fetch(`/api/companies/${companyId}/members/invitations`, {
+      const response = await fetch(`/api/companies/${companyId}/invitations/${id}`, {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ invitationId: id }),
       });
       
       if (!response.ok) {
@@ -116,7 +108,6 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
       // Remove from the list on success
       setInvitations(prev => prev.filter(inv => inv.id !== id));
     } catch (error: any) {
-      console.error('Error canceling invitation:', error);
       alert(error.message || 'An error occurred while canceling the invitation');
     } finally {
       setCancelingId(null);
@@ -162,16 +153,16 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
         );
       default:
         return null;
-    }
-  };
+      }
+      };
 
-  // If user doesn't have permission, don't render the component
-  if (!canInvite) {
-    return null;
-  }
+      // If user doesn't have permission, don't render the component
+      if (!canInvite) {
+      return null;
+      }
 
-  return (
-    <Card className="w-full">
+      return (
+      <Card className="w-full">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <div>
           <CardTitle className="text-xl">Team Invitations</CardTitle>
@@ -261,22 +252,20 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
                       </TooltipProvider>
                     </TableCell>
                     <TableCell className="text-right">
-                      {invitation.status === 'pending' && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCancelInvitation(invitation.id)}
-                          disabled={cancelingId === invitation.id}
-                          className="h-8 w-8 p-0"
-                        >
-                          {cancelingId === invitation.id ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <X size={16} className="text-muted-foreground" />
-                          )}
-                          <span className="sr-only">Cancel invitation</span>
-                        </Button>
-                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCancelInvitation(invitation.id)}
+                        disabled={cancelingId === invitation.id}
+                        className="h-8 w-8 p-0"
+                      >
+                        {cancelingId === invitation.id ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <X size={16} className="text-muted-foreground" />
+                        )}
+                        <span className="sr-only">Delete invitation</span>
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -285,6 +274,6 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
           </div>
         )}
       </CardContent>
-    </Card>
-  );
-}
+      </Card>
+      );
+      }

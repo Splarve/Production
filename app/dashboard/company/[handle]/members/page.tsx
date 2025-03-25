@@ -95,6 +95,7 @@ export default async function CompanyMembersPage({ params }: { params: { handle:
           companyId={company.id} 
           userRole={membership.role} 
         />
+
         
         {/* Team Members Management */}
         <ManageTeamMembers 

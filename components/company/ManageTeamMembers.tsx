@@ -1,4 +1,4 @@
-// components/company/ManageTeamMembers.tsx
+// components/company/ManageTeamMembers.tsx - Updated version
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -17,13 +17,19 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Users, Loader2 } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Users, Loader2, UserIcon } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { formatDistanceToNow } from 'date-fns';
+import { ChangeUserRole } from './ChangeUserRole';
 
 interface TeamMember {
   user_id: string;
   role: string;
+  username: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  last_active: string | null;
 }
 
 interface ManageTeamMembersProps {
@@ -35,82 +41,50 @@ interface ManageTeamMembersProps {
 export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMembersProps) {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
-  const [canInviteUsers, setCanInviteUsers] = useState(false);
   
-  useEffect(() => {
-    // Owners always have permission to invite
-    if (userRole === 'owner') {
-      setCanInviteUsers(true);
-    } else {
-      hasPermission(companyId, 'invite_users').then(setCanInviteUsers);
-    }
-
-    fetchMembers();
-  }, [companyId, userRole]);
-
-  // Check if user has a specific permission
-  async function hasPermission(companyId: string, permission: string): Promise<boolean> {
-    try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) return false;
-      
-      // If user is owner, always return true
-      if (userRole === 'owner') {
-        return true;
-      }
-      
-      // Otherwise check permission
-      const { data, error } = await supabase.rpc(
-        'user_has_permission',
-        {
-          user_id: user.id,
-          company_id: companyId,
-          required_permission: permission
-        }
-      );
-      
-      if (error) {
-        console.error('Error checking permission:', error);
-        return false;
-      }
-      
-      return !!data;
-    } catch (error) {
-      console.error('Error in hasPermission:', error);
-      return false;
-    }
-  }
-
+  // Function to fetch members using the new RPC function
   const fetchMembers = async () => {
     try {
       setLoading(true);
       const supabase = createClient();
       
-      // Simple query without any joins to avoid permission issues
-      const { data: membersData, error: membersError } = await supabase
-        .from('company_members')
-        .select('user_id, role')
-        .eq('company_id', companyId)
-        .order('role', { ascending: false });
+      // Use the RPC function to get detailed member information
+      const { data: membersData, error: membersError } = await supabase.rpc(
+        'get_company_members',
+        { p_company_id: companyId }
+      );
       
       if (membersError) {
         console.error('Error fetching team members:', membersError);
         return;
       }
       
-      setMembers(membersData);
+      setMembers(membersData || []);
     } catch (error) {
-      console.error('Error in fetchMembers:', error);
+      console.error('Error in fetchMembers');
     } finally {
       setLoading(false);
     }
   };
 
-  // Generate initials from the user ID
-  const getInitials = (userId: string): string => {
-    return userId.substring(0, 2).toUpperCase();
+  useEffect(() => {
+    if (companyId) {
+      fetchMembers();
+    }
+  }, [companyId]);
+
+  // Generate initials from name or username
+  const getInitials = (name: string): string => {
+    if (!name) return 'U';
+    
+    // For full names, use first letters of first and last name
+    const parts = name.split(' ');
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+    }
+    
+    // For single names or usernames, use first two letters
+    return name.substring(0, 2).toUpperCase();
   };
 
   return (
@@ -146,6 +120,9 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
+                  {userRole === 'owner' || userRole === 'admin' ? (
+                    <TableHead className="w-10"></TableHead>
+                  ) : null}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -156,20 +133,43 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
                     <TableRow key={member.user_id}>
                       <TableCell className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarFallback>
-                            {getInitials(member.user_id)}
-                          </AvatarFallback>
+                          {member.avatar_url ? (
+                            <AvatarImage src={member.avatar_url} alt={member.full_name || member.username || "User"} />
+                          ) : (
+                            <AvatarFallback>
+                              {member.full_name ? getInitials(member.full_name) : getInitials(member.username || 'User')}
+                            </AvatarFallback>
+                          )}
                         </Avatar>
                         <div>
                           <div className="font-medium">
-                            User {member.user_id.substring(0, 8)}
+                            {member.full_name || member.username || `User ${member.user_id.substring(0, 8)}`}
                             {isCurrentUser && <span className="ml-2 text-xs text-muted-foreground">(You)</span>}
                           </div>
+                          {member.last_active && (
+                            <div className="text-xs text-muted-foreground">
+                              Last active {formatDistanceToNow(new Date(member.last_active), { addSuffix: true })}
+                            </div>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="capitalize">{member.role}</div>
                       </TableCell>
+                      {userRole === 'owner' || userRole === 'admin' ? (
+                        <TableCell className="text-right">
+                          {!isCurrentUser && (
+                            <ChangeUserRole
+                              userId={member.user_id}
+                              companyId={companyId}
+                              currentRole={member.role}
+                              userFullName={member.full_name || member.username || `User ${member.user_id.substring(0, 8)}`}
+                              userRole={userRole}
+                              onRoleChanged={fetchMembers}
+                            />
+                          )}
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   );
                 })}
