@@ -14,44 +14,62 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Call the secure RPC function to get invitations
-    const { data: invitationsData, error: procedureError } = await supabase
-      .rpc('get_user_invitations');
+    // Try to use the secure RPC function first
+    const { data: invitationsData, error: rpcError } = await supabase.rpc(
+      'get_user_invitations'
+    );
     
-    if (procedureError) {
-      console.error('Error calling get_user_invitations:', procedureError);
-      
-      // Fallback to a direct query with RLS protection
-      const { data: invitations, error: invitationsError } = await supabase
-        .from('company_invitations')
-        .select(`
-          *,
-          companies:company_id (
-            id,
-            name,
-            handle,
-            logo_url
-          )
-        `)
-        .eq('email', user.email)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-      
-      if (invitationsError) {
-        return NextResponse.json({ error: invitationsError.message }, { status: 500 });
-      }
-      
-      // Map minimal inviter info if needed - avoid exposing auth user details
-      const safeInvitations = invitations.map(invitation => ({
-        ...invitation,
-        inviter_name: 'Company Member' // Generic placeholder instead of exposing user details
-      }));
-      
-      return NextResponse.json({ invitations: safeInvitations });
+    if (!rpcError && invitationsData) {
+      return NextResponse.json({ invitations: invitationsData });
     }
     
-    // Return data from the secure function
-    return NextResponse.json({ invitations: invitationsData });
+    // If RPC fails, fall back to a direct query with RLS (which should also work now)
+    console.log("RPC function returned an error, falling back to direct query:", rpcError);
+    
+    // Use the email from the authenticated user
+    const userEmail = user.email;
+    
+    if (!userEmail) {
+      return NextResponse.json({ error: 'User email not found' }, { status: 400 });
+    }
+    
+    // Direct query with RLS protection
+    const { data: invitations, error: invitationsError } = await supabase
+      .from('company_invitations')
+      .select(`
+        id,
+        company_id,
+        invited_by,
+        email,
+        role,
+        status,
+        message,
+        created_at,
+        updated_at,
+        expires_at,
+        companies:company_id (
+          id,
+          name,
+          handle,
+          logo_url
+        )
+      `)
+      .eq('email', userEmail)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    
+    if (invitationsError) {
+      console.error('Error fetching invitations with direct query:', invitationsError);
+      return NextResponse.json({ error: invitationsError.message }, { status: 500 });
+    }
+    
+    // Map minimal inviter info if needed - avoid exposing auth user details
+    const safeInvitations = invitations.map(invitation => ({
+      ...invitation,
+      inviter_name: 'Company Member' // Generic placeholder instead of exposing user details
+    }));
+    
+    return NextResponse.json({ invitations: safeInvitations });
     
   } catch (error) {
     console.error('Error fetching user invitations:', error);
