@@ -132,7 +132,7 @@ export function Hero() {
                 asChild 
                 size="lg" 
                 variant="outline" 
-                className="border-primary text-primary hover:text-secondary hover:bg-primary/5"
+                className="border-[#c9a0ff] text-[#8f00ff] hover:text-[#4b0076] hover:bg-[#c9a0ff]/5"
               >
                 <Link href="/signup/company">For Employers</Link>
               </Button>

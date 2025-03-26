@@ -10,6 +10,7 @@ interface AuthButtonProps {
   variant?: 'primary' | 'outline';
   fullWidth?: boolean;
   className?: string;
+  isCompany?: boolean;
 }
 
 /**
@@ -23,16 +24,22 @@ export function AuthButton({
   variant = 'primary',
   fullWidth = true,
   className = '',
+  isCompany = false,
 }: AuthButtonProps) {
-  const baseClasses = "px-4 py-2 rounded-md font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all duration-200";
+  const baseClasses = "px-4 py-2 rounded-md font-medium transition-all duration-200 focus:outline-none";
   const widthClasses = fullWidth ? "w-full" : "";
   
-  const variants = {
-    primary: "bg-gradient-to-r from-primary to-accent text-white hover:from-secondary hover:to-accent disabled:opacity-70 disabled:cursor-not-allowed",
-    outline: "border border-primary text-primary hover:bg-primary/5 disabled:opacity-70 disabled:cursor-not-allowed"
+  // Company-specific or personal styling
+  const variantClasses = {
+    primary: isCompany 
+      ? "bg-gradient-to-r from-[#c9a0ff] to-[#8f00ff] text-white hover:from-[#4b0076] hover:to-[#8f00ff] focus:ring-2 focus:ring-[#c9a0ff]/50 disabled:opacity-70 disabled:cursor-not-allowed"
+      : "bg-gradient-to-r from-primary to-accent text-white hover:from-secondary hover:to-accent focus:ring-2 focus:ring-primary/50 disabled:opacity-70 disabled:cursor-not-allowed",
+    outline: isCompany
+      ? "border border-[#c9a0ff] text-[#8f00ff] hover:bg-[#c9a0ff]/5 focus:ring-2 focus:ring-[#c9a0ff]/30 disabled:opacity-70 disabled:cursor-not-allowed"
+      : "border border-primary text-primary hover:bg-primary/5 focus:ring-2 focus:ring-primary/30 disabled:opacity-70 disabled:cursor-not-allowed"
   };
   
-  const buttonClasses = `${baseClasses} ${widthClasses} ${variants[variant]} ${className}`;
+  const buttonClasses = `${baseClasses} ${widthClasses} ${variantClasses[variant]} ${className}`;
 
   return (
     <motion.button
@@ -49,7 +56,7 @@ export function AuthButton({
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          Processing...
+          {typeof children === 'string' && children.includes('...') ? children : 'Processing...'}
         </span>
       ) : (
         children

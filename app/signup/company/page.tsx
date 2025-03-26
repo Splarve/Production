@@ -26,6 +26,7 @@ export default function CompanySignupPage() {
         subtitle="Sign up to find top talent"
         error={displayError}
         message={success ? "Check your email for a confirmation link to complete your signup" : null}
+        isCompany={true}
       >
         {!success ? (
           <div className="space-y-6">
@@ -60,11 +61,11 @@ export default function CompanySignupPage() {
           transition={{ delay: 0.5 }}
         >
           By signing up, you agree to our{' '}
-          <Link href="#" className="text-primary hover:underline">
+          <Link href="#" className="text-[#8f00ff] hover:underline">
             Terms of Service
           </Link>{' '}
           and{' '}
-          <Link href="#" className="text-primary hover:underline">
+          <Link href="#" className="text-[#8f00ff] hover:underline">
             Privacy Policy
           </Link>
         </motion.div>
@@ -74,7 +75,7 @@ export default function CompanySignupPage() {
             Already have an account?{' '}
             <Link
               href="/login/company"
-              className="text-primary hover:underline focus:outline-none font-medium"
+              className="text-[#8f00ff] hover:underline focus:outline-none font-medium"
             >
               Sign In
             </Link>

@@ -11,6 +11,7 @@ interface AuthProviderButtonsProps {
 
 export function AuthProviderButtons({ type, onError }: AuthProviderButtonsProps) {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const isCompany = type === 'company';
   
   const supabase = createClient();
   
@@ -53,6 +54,7 @@ export function AuthProviderButtons({ type, onError }: AuthProviderButtonsProps)
         onClick={handleGoogleSignIn}
         isLoading={isGoogleLoading}
         variant="outline"
+        isCompany={isCompany}
         className="flex items-center justify-center gap-2"
       >
         <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
@@ -68,10 +70,10 @@ export function AuthProviderButtons({ type, onError }: AuthProviderButtonsProps)
       
       <div className="relative mt-2">
         <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-gray-200"></div>
+          <div className={`w-full border-t ${isCompany ? 'border-[#c9a0ff]/20' : 'border-gray-200'}`}></div>
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-white px-4 text-sm text-gray-500">or</span>
+          <span className={`bg-white px-4 text-sm ${isCompany ? 'text-[#8f00ff]/70' : 'text-gray-500'}`}>or</span>
         </div>
       </div>
     </div>
