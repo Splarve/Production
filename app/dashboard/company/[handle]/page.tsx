@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Building, Users, Edit, Settings } from 'lucide-react';
+import { ArrowLeft, Building, Users, Edit, Settings, Briefcase } from 'lucide-react';
 
 interface CompanyPageProps {
   params: Promise<{ handle: string }>;
@@ -146,7 +146,27 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
             )}
           </CardContent>
         </Card>
-        
+        <Card>
+          <CardHeader>
+            <CardTitle>Job Posts</CardTitle>
+            <CardDescription>
+              Manage and create job postings
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <p>Create job postings and manage applications.</p>
+              
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/dashboard/company/${company.handle}/jobs`}>
+                  <Briefcase className="mr-2 h-4 w-4" />
+                  Manage Jobs
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Team Members</CardTitle>
