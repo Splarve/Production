@@ -1,22 +1,17 @@
 // components/job-posts/QuillEditor.tsx
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import 'react-quill/dist/quill.snow.css';
+import { useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
-
-// We need to dynamically import ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), {
-  ssr: false,
-  loading: () => (
-    <div className="h-64 border rounded-md flex items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  ),
-});
-
-// Need to import dynamic separately to avoid import ordering issues
 import dynamic from 'next/dynamic';
+import 'quill/dist/quill.snow.css';
+
+// Simple loading component
+const LoadingEditor = () => (
+  <div className="h-64 border rounded-md flex items-center justify-center">
+    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+  </div>
+);
 
 interface QuillEditorProps {
   value: string;
@@ -24,64 +19,95 @@ interface QuillEditorProps {
   placeholder?: string;
 }
 
-export default function QuillEditor({ value, onChange, placeholder }: QuillEditorProps) {
-  const [isMounted, setIsMounted] = useState(false);
-  
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  const modules = {
-    toolbar: [
-      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      ['link'],
-      ['clean']
-    ],
-  };
-
-  const formats = [
-    'header',
-    'bold', 'italic', 'underline', 'strike',
-    'list', 'bullet', 'indent',
-    'link',
-  ];
-
-  if (!isMounted) {
-    return (
-      <div className="h-64 border rounded-md flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+// Using dynamic import to avoid SSR issues
+const QuillEditor = dynamic(
+  async () => {
+    const { default: Quill } = await import('quill');
+    const { default: DOMPurify } = await import('dompurify');
+    
+    return function QuillComponent({ value, onChange, placeholder }: QuillEditorProps) {
+      const editorRef = useRef<HTMLDivElement>(null);
+      const quillInstance = useRef<any>(null);
+      const isInitializedRef = useRef(false);
+      const contentRef = useRef(value);
+      
+      // Initialize Quill once when component mounts
+      useEffect(() => {
+        if (!editorRef.current) return;
+        
+        // Only initialize once
+        if (!quillInstance.current) {
+          const quill = new Quill(editorRef.current, {
+            modules: {
+              toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link', 'clean']
+              ]
+            },
+            placeholder: placeholder || 'Write a detailed job description...',
+            theme: 'snow'
+          });
+          
+          // Set initial content if present
+          if (value && value.trim() !== '') {
+            const sanitizedValue = DOMPurify.sanitize(value);
+            quill.root.innerHTML = sanitizedValue;
+            contentRef.current = sanitizedValue;
+          }
+          
+          // Handle text changes - debounce slightly for better performance
+          quill.on('text-change', () => {
+            const html = quill.root.innerHTML;
+            const sanitizedHtml = DOMPurify.sanitize(html);
+            
+            // Store in our ref
+            contentRef.current = sanitizedHtml;
+            
+            // Check if content is just an empty paragraph
+            const isEmpty = sanitizedHtml === '<p><br></p>' || sanitizedHtml.trim() === '';
+            
+            // Call onChange with empty string if it's empty, otherwise pass the content
+            onChange(isEmpty ? '' : sanitizedHtml);
+          });
+          
+          quillInstance.current = quill;
+          isInitializedRef.current = true;
+        }
+      }, []);
+      
+      // Handle value changes from parent component
+      useEffect(() => {
+        if (!quillInstance.current || !isInitializedRef.current) return;
+        
+        // Don't update if the content is already what we expect
+        if (value !== contentRef.current) {
+          const quill = quillInstance.current;
+          
+          // Save selection
+          const range = quill.getSelection();
+          
+          // Update content
+          const sanitizedValue = value ? DOMPurify.sanitize(value) : '';
+          quill.root.innerHTML = sanitizedValue;
+          contentRef.current = sanitizedValue;
+          
+          // Restore selection
+          if (range) {
+            setTimeout(() => quill.setSelection(range), 0);
+          }
+        }
+      }, [value]);
+      
+      // Return component immediately without hidden display
+      return <div ref={editorRef} className="h-64"></div>;
+    };
+  },
+  {
+    ssr: false,
+    loading: () => <LoadingEditor />
   }
+);
 
-  return (
-    <div className="quill-editor">
-      <ReactQuill
-        theme="snow"
-        value={value}
-        onChange={onChange}
-        modules={modules}
-        formats={formats}
-        placeholder={placeholder}
-        className="h-64 rounded-md"
-      />
-      <style jsx global>{`
-        .quill-editor .ql-container {
-          min-height: 200px;
-          max-height: 400px;
-          overflow-y: auto;
-          border-bottom-left-radius: 0.375rem;
-          border-bottom-right-radius: 0.375rem;
-        }
-        .quill-editor .ql-toolbar {
-          border-top-left-radius: 0.375rem;
-          border-top-right-radius: 0.375rem;
-          background-color: #f9fafb;
-        }
-      `}</style>
-    </div>
-  );
-}
+export default QuillEditor;
