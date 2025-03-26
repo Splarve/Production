@@ -15,6 +15,7 @@ interface AuthInputProps {
   helperText?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  isCompany?: boolean;
 }
 
 /**
@@ -32,13 +33,14 @@ export function AuthInput({
   helperText,
   value,
   onChange,
+  isCompany = false,
 }: AuthInputProps) {
   const [isFocused, setIsFocused] = useState(false);
   
   return (
     <div className="space-y-1.5 mb-4">
       <label htmlFor={id} className="block text-sm font-medium text-foreground">
-        {label} {required && <span className="text-accent">*</span>}
+        {label} {required && <span className={isCompany ? "text-[#8f00ff]" : "text-accent"}>*</span>}
       </label>
       
       <div className="relative">
@@ -54,14 +56,16 @@ export function AuthInput({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           placeholder={placeholder}
-          className="w-full px-3 py-2 border border-primary/20 rounded-md 
-                    focus:ring-2 focus:ring-primary/20 focus:border-primary 
-                    bg-white transition-all duration-200 outline-none"
+          className={`w-full px-3 py-2 border rounded-md 
+                    bg-white transition-all duration-200 outline-none
+                    ${isCompany 
+                      ? "border-[#c9a0ff]/20 focus:ring-2 focus:ring-[#c9a0ff]/20 focus:border-[#c9a0ff]" 
+                      : "border-primary/20 focus:ring-2 focus:ring-primary/20 focus:border-primary"}`}
         />
         
         {isFocused && (
           <motion.div 
-            className="absolute inset-0 pointer-events-none border border-primary rounded-md"
+            className={`absolute inset-0 pointer-events-none border rounded-md ${isCompany ? "border-[#c9a0ff]" : "border-primary"}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

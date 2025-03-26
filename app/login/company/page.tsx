@@ -27,6 +27,7 @@ export default function CompanyLoginPage() {
         subtitle="Access your company dashboard"
         error={displayError}
         message={displayMessage}
+        isCompany={true}
       >
         <div className="space-y-6">
           <AuthProviderButtons 
@@ -46,7 +47,7 @@ export default function CompanyLoginPage() {
             Don't have a company account?{' '}
             <Link
               href="/signup/company"
-              className="text-primary hover:underline focus:outline-none font-medium"
+              className="text-[#8f00ff] hover:underline focus:outline-none font-medium"
             >
               Sign Up
             </Link>
@@ -57,7 +58,7 @@ export default function CompanyLoginPage() {
               Looking for a job?{' '}
               <Link
                 href="/login/personal"
-                className="text-primary hover:underline focus:outline-none"
+                className="text-[#8f00ff] hover:underline focus:outline-none"
               >
                 Login as a job seeker
               </Link>

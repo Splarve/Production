@@ -103,6 +103,7 @@ export function AuthForm({ mode, type, onSuccess, onError }: AuthFormProps) {
         required
         value={email}
         onChange={(e) => setEmail(e.target.value)}
+        isCompany={type === 'company'}
       />
       
       <AuthInput
@@ -116,6 +117,7 @@ export function AuthForm({ mode, type, onSuccess, onError }: AuthFormProps) {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
         helperText={mode === 'signup' ? "At least 8 characters" : undefined}
+        isCompany={type === 'company'}
       />
       
       <AuthButton
@@ -123,6 +125,7 @@ export function AuthForm({ mode, type, onSuccess, onError }: AuthFormProps) {
         isLoading={isLoading}
         variant="primary"
         fullWidth
+        isCompany={type === 'company'}
       >
         {isLoading 
           ? (mode === 'signup' ? 'Creating Account...' : 'Signing In...') 
