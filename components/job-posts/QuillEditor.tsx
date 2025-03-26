@@ -28,58 +28,79 @@ const QuillEditor = dynamic(
     return function QuillComponent({ value, onChange, placeholder }: QuillEditorProps) {
       const editorRef = useRef<HTMLDivElement>(null);
       const quillInstance = useRef<any>(null);
+      const isInitializedRef = useRef(false);
+      const contentRef = useRef(value);
       
       // Initialize Quill once when component mounts
       useEffect(() => {
-        if (!editorRef.current || quillInstance.current) return;
+        if (!editorRef.current) return;
         
-        const quill = new Quill(editorRef.current, {
-          modules: {
-            toolbar: [
-              [{ 'header': [1, 2, 3, false] }],
-              ['bold', 'italic', 'underline', 'strike'],
-              [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-              ['link', 'clean']
-            ]
-          },
-          placeholder: placeholder || 'Write a detailed job description...',
-          theme: 'snow'
-        });
-        
-        // Set initial content
-        if (value) {
-          const sanitizedValue = DOMPurify.sanitize(value);
-          quill.root.innerHTML = sanitizedValue;
-        }
-        
-        // Handle text changes
-        quill.on('text-change', () => {
-          const html = quill.root.innerHTML;
-          const sanitizedHtml = DOMPurify.sanitize(html);
-          onChange(sanitizedHtml);
-        });
-        
-        quillInstance.current = quill;
-        
-        // Cleanup on unmount
-        return () => {
-          if (quillInstance.current) {
-            quillInstance.current.off('text-change');
+        // Only initialize once
+        if (!quillInstance.current) {
+          const quill = new Quill(editorRef.current, {
+            modules: {
+              toolbar: [
+                [{ 'header': [1, 2, 3, false] }],
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                ['link', 'clean']
+              ]
+            },
+            placeholder: placeholder || 'Write a detailed job description...',
+            theme: 'snow'
+          });
+          
+          // Set initial content if present
+          if (value && value.trim() !== '') {
+            const sanitizedValue = DOMPurify.sanitize(value);
+            quill.root.innerHTML = sanitizedValue;
+            contentRef.current = sanitizedValue;
           }
-        };
+          
+          // Handle text changes - debounce slightly for better performance
+          quill.on('text-change', () => {
+            const html = quill.root.innerHTML;
+            const sanitizedHtml = DOMPurify.sanitize(html);
+            
+            // Store in our ref
+            contentRef.current = sanitizedHtml;
+            
+            // Check if content is just an empty paragraph
+            const isEmpty = sanitizedHtml === '<p><br></p>' || sanitizedHtml.trim() === '';
+            
+            // Call onChange with empty string if it's empty, otherwise pass the content
+            onChange(isEmpty ? '' : sanitizedHtml);
+          });
+          
+          quillInstance.current = quill;
+          isInitializedRef.current = true;
+        }
       }, []);
       
       // Handle value changes from parent component
       useEffect(() => {
-        if (!quillInstance.current) return;
+        if (!quillInstance.current || !isInitializedRef.current) return;
         
-        const quill = quillInstance.current;
-        if (quill.root.innerHTML !== value) {
-          const sanitizedValue = DOMPurify.sanitize(value);
+        // Don't update if the content is already what we expect
+        if (value !== contentRef.current) {
+          const quill = quillInstance.current;
+          
+          // Save selection
+          const range = quill.getSelection();
+          
+          // Update content
+          const sanitizedValue = value ? DOMPurify.sanitize(value) : '';
           quill.root.innerHTML = sanitizedValue;
+          contentRef.current = sanitizedValue;
+          
+          // Restore selection
+          if (range) {
+            setTimeout(() => quill.setSelection(range), 0);
+          }
         }
       }, [value]);
       
+      // Return component immediately without hidden display
       return <div ref={editorRef} className="h-64"></div>;
     };
   },
