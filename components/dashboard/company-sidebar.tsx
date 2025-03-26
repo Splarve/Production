@@ -82,7 +82,7 @@ export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
 
   return (
     <Sidebar 
-      className="transition-all duration-300"
+      className="transition-all duration-300 h-[calc(100vh-3.5rem)]"
       collapsible="icon"
       side="left"
     >
@@ -93,7 +93,7 @@ export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
         </div>
       </SidebarHeader>
       
-      <SidebarContent>
+      <SidebarContent className="flex-1 overflow-y-auto">
         <SidebarGroup>
           <SidebarGroupLabel>Company Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
