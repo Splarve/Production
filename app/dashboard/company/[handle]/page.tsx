@@ -76,7 +76,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
   // Wrap the existing content with the CompanyLayout
   return (
     <CompanyLayout handle={handle} currentPath={currentPath}>
-      <div className="container mx-auto py-8 px-4">
+      <div className="max-w-[1200px] mx-auto">
         <div className="flex flex-col md:flex-row items-start justify-between mb-6">
           <div className="flex items-center gap-4">
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">

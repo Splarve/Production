@@ -7,7 +7,9 @@ import {
   Settings, 
   Users, 
   LayoutDashboard,
-  ChevronLeft
+  Home,
+  ChevronLeft,
+  Menu
 } from 'lucide-react';
 
 import {
@@ -21,6 +23,8 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
+  useSidebar
 } from "@/components/ui/sidebar";
 
 interface CompanySidebarProps {
@@ -31,13 +35,24 @@ interface CompanySidebarProps {
 export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
   // Don't render the sidebar if we're not in a company-specific page
   if (!handle) return null;
-
+  
+  const { state, toggleSidebar } = useSidebar();
   const isActive = (path: string) => {
     return currentPath === path || (path !== `/dashboard/company/${handle}` && currentPath.startsWith(path));
   };
 
   // Company navigation items
   const navigationItems = [
+    {
+      title: "Toggle Sidebar",
+      icon: state === 'expanded' ? ChevronLeft : Menu,
+      onClick: toggleSidebar,
+    },
+    {
+      title: "Company Home",
+      url: `/dashboard/company`,
+      icon: Home,
+    },
     {
       title: "Dashboard",
       url: `/dashboard/company/${handle}`,
@@ -66,42 +81,59 @@ export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
   ];
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar 
+      className="transition-all duration-300"
+      collapsible="icon"
+      side="left"
+    >
       <SidebarHeader className="flex h-14 items-center border-b px-4">
-        <Link href="/dashboard/company" className="flex items-center gap-2 font-semibold">
-          <ChevronLeft className="h-4 w-4" />
-          <span>All Companies</span>
-        </Link>
+        <div className="flex items-center gap-2 font-semibold">
+          <Building className="h-5 w-5" />
+          <span>Splarve</span>
+        </div>
       </SidebarHeader>
+      
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Company Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton 
-                    asChild
-                    className={isActive(item.url) ? 'bg-muted' : ''}
-                  >
-                    <Link href={item.url}>
+              {navigationItems.map((item, index) => (
+                <SidebarMenuItem key={index}>
+                  {item.url ? (
+                    <SidebarMenuButton 
+                      asChild
+                      className={isActive(item.url) ? 'bg-muted' : ''}
+                    >
+                      <Link href={item.url} className="flex items-center gap-2">
+                        <item.icon className="h-5 w-5" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton 
+                      onClick={item.onClick}
+                      aria-label={item.title}
+                      className="flex items-center gap-2"
+                    >
                       <item.icon className="h-5 w-5" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
+                      <span>{state === 'expanded' ? item.title : ''}</span>
+                    </SidebarMenuButton>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      
       <SidebarFooter className="border-t p-4">
-        <div className="flex flex-col gap-2">
-          <div className="text-xs text-muted-foreground">
-            <span className="font-medium">Splarve</span> • Company Dashboard
-          </div>
+        <div className="text-xs text-muted-foreground">
+          <span className="font-medium">Splarve</span> • Company Dashboard
         </div>
       </SidebarFooter>
+      
+      <SidebarRail />
     </Sidebar>
   );
-} 
+}
