@@ -82,16 +82,18 @@ export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
 
   return (
     <Sidebar 
-      className="transition-all duration-300 h-[calc(100vh-3.5rem)]"
+      className="transition-all duration-300 h-screen pt-6"
       collapsible="icon"
       side="left"
     >
-      <SidebarHeader className="flex h-14 items-center border-b px-4">
-        <div className="flex items-center gap-2 font-semibold">
-          <Building className="h-5 w-5" />
-          <span>Splarve</span>
+      <div className="mb-6">
+        <div className="flex items-center justify-center gap-2 font-semibold px-4">
+          <Building className="h-6 w-6" />
+          {state === 'expanded' && (
+            <span className="text-lg transition-opacity duration-200">Splarve</span>
+          )}
         </div>
-      </SidebarHeader>
+      </div>
       
       <SidebarContent className="flex-1 overflow-y-auto">
         <SidebarGroup>
@@ -129,7 +131,11 @@ export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
       
       <SidebarFooter className="border-t p-4">
         <div className="text-xs text-muted-foreground">
-          <span className="font-medium">Splarve</span> • Company Dashboard
+          {state === 'expanded' && (
+            <>
+              <span className="font-medium">Splarve</span> • Company Dashboard
+            </>
+          )}
         </div>
       </SidebarFooter>
       
