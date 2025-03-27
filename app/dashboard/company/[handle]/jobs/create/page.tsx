@@ -5,6 +5,7 @@ import { createClient } from '@/utils/supabase/server';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { JobPostForm } from '@/components/job-posts/JobPostForm';
+import { CompanyLayout } from '@/components/dashboard/company-layout';
 
 export default async function CreateJobPostPage({ params }: { params: { handle: string } }) {
   const { handle } = await params;
@@ -65,25 +66,30 @@ export default async function CreateJobPostPage({ params }: { params: { handle: 
     return redirect(`/dashboard/company/${handle}?error=You+do+not+have+permission+to+create+job+posts`);
   }
   
+  // Get the current path for sidebar active state
+  const currentPath = `/dashboard/company/${handle}/jobs`;
+  
   return (
-    <div className="container mx-auto py-8 px-4">
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="mb-6" 
-        asChild
-      >
-        <Link href={`/dashboard/company/${handle}/jobs`}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jobs
-        </Link>
-      </Button>
-      
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Create New Job Post</h1>
-        <p className="text-muted-foreground">Create a new job posting for {company.name}</p>
+    <CompanyLayout handle={handle} currentPath={currentPath}>
+      <div className="container mx-auto py-8 px-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="mb-6 text-[#4b0076] hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]" 
+          asChild
+        >
+          <Link href={`/dashboard/company/${handle}/jobs`}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Jobs
+          </Link>
+        </Button>
+        
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-[#4b0076]">Create New Job Post</h1>
+          <p className="text-muted-foreground">Create a new job posting for {company.name}</p>
+        </div>
+        
+        <JobPostForm companyId={company.id} />
       </div>
-      
-      <JobPostForm companyId={company.id} />
-    </div>
+    </CompanyLayout>
   );
 }

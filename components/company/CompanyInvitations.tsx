@@ -162,10 +162,10 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
       }
 
       return (
-      <Card className="w-full">
+      <Card className="w-full border-[#c9a0ff]/30">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <div>
-          <CardTitle className="text-xl">Team Invitations</CardTitle>
+          <CardTitle className="text-xl text-[#4b0076]">Team Invitations</CardTitle>
           <CardDescription>
             Manage invitations to join your company
           </CardDescription>
@@ -181,7 +181,7 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
       <CardContent>
         {loading ? (
           <div className="flex justify-center items-center h-32">
-            <Loader2 size={24} className="animate-spin text-muted-foreground" />
+            <Loader2 size={24} className="animate-spin text-[#8f00ff]" />
           </div>
         ) : error ? (
           <div className="text-center py-8 text-red-500">
@@ -191,7 +191,7 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
             <Button 
               variant="outline" 
               size="sm"
-              className="mt-4"
+              className="mt-4 border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]"
               onClick={fetchInvitations}
             >
               Try Again
@@ -199,8 +199,8 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
           </div>
         ) : invitations.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
-            <Mail className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
-            <h3 className="font-medium text-lg">No invitations</h3>
+            <Mail className="mx-auto h-12 w-12 text-[#c9a0ff]/50 mb-3" />
+            <h3 className="font-medium text-lg text-[#4b0076]">No invitations</h3>
             <p className="mt-1">
               {canInvite 
                 ? "Invite team members to collaborate in your company." 
@@ -209,7 +209,7 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
             {canInvite && (
               <Button 
                 variant="outline" 
-                className="mt-4"
+                className="mt-4 border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]"
                 onClick={() => {
                   // Find and click the InviteMembers trigger button
                   const button = document.querySelector('[data-state="closed"][aria-haspopup="dialog"]') as HTMLButtonElement;
@@ -222,22 +222,22 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
             )}
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md border border-[#c9a0ff]/30">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Sent</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                <TableRow className="bg-[#f8f5ff]">
+                  <TableHead className="text-[#4b0076]">Email</TableHead>
+                  <TableHead className="text-[#4b0076]">Role</TableHead>
+                  <TableHead className="text-[#4b0076]">Status</TableHead>
+                  <TableHead className="text-[#4b0076]">Sent</TableHead>
+                  <TableHead className="text-right text-[#4b0076]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {invitations.map((invitation) => (
-                  <TableRow key={invitation.id}>
-                    <TableCell className="font-medium">{invitation.email}</TableCell>
-                    <TableCell className="capitalize">{invitation.role}</TableCell>
+                  <TableRow key={invitation.id} className="hover:bg-[#f8f5ff]">
+                    <TableCell className="font-medium text-[#4b0076]">{invitation.email}</TableCell>
+                    <TableCell className="capitalize text-[#4b0076]">{invitation.role}</TableCell>
                     <TableCell>{getStatusBadge(invitation)}</TableCell>
                     <TableCell>
                       <TooltipProvider>
@@ -251,20 +251,20 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
                         </Tooltip>
                       </TooltipProvider>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right text-[#4b0076]">
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="h-8 w-8 p-0 hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
                         onClick={() => handleCancelInvitation(invitation.id)}
-                        disabled={cancelingId === invitation.id}
-                        className="h-8 w-8 p-0"
+                        disabled={cancelingId === invitation.id || invitation.status !== 'pending'}
                       >
                         {cancelingId === invitation.id ? (
-                          <Loader2 size={16} className="animate-spin" />
+                          <Loader2 size={16} className="animate-spin text-[#8f00ff]" />
                         ) : (
-                          <X size={16} className="text-muted-foreground" />
+                          <X size={16} />
                         )}
-                        <span className="sr-only">Delete invitation</span>
+                        <span className="sr-only">Cancel Invitation</span>
                       </Button>
                     </TableCell>
                   </TableRow>

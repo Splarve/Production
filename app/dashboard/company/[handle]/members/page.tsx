@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { ManageTeamMembers } from '@/components/company/ManageTeamMembers';
 import { CompanyInvitations } from '@/components/company/CompanyInvitations';
+import { CompanyLayout } from '@/components/dashboard/company-layout';
 
 export default async function CompanyMembersPage({ params }: { params: { handle: Promise<string> } }) {
   // Await the params.handle value
@@ -69,41 +70,46 @@ export default async function CompanyMembersPage({ params }: { params: { handle:
     return redirect(`/dashboard/company/${handle}?error=You+do+not+have+permission+to+manage+team+members`);
   }
   
+  // Get the current path for sidebar active state
+  const currentPath = `/dashboard/company/${handle}/members`;
+  
   return (
-    <div className="container mx-auto py-8 px-4">
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="mb-6" 
-        asChild
-      >
-        <Link href={`/dashboard/company/${handle}`}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Company
-        </Link>
-      </Button>
-      
-      <div className="flex flex-col md:flex-row items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">{company.name}</h1>
-          <p className="text-muted-foreground">Manage team members and invitations</p>
+    <CompanyLayout handle={handle} currentPath={currentPath}>
+      <div className="container mx-auto py-8 px-4">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="mb-6 text-[#4b0076] hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]" 
+          asChild
+        >
+          <Link href={`/dashboard/company/${handle}`}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Company
+          </Link>
+        </Button>
+        
+        <div className="flex flex-col md:flex-row items-start justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-[#4b0076]">{company.name}</h1>
+            <p className="text-muted-foreground">Manage team members and invitations</p>
+          </div>
+        </div>
+        
+        <div className="grid gap-6">
+          {/* Invitations Management */}
+          <CompanyInvitations 
+            companyId={company.id} 
+            userRole={membership.role} 
+          />
+
+          
+          {/* Team Members Management */}
+          <ManageTeamMembers 
+            companyId={company.id} 
+            userRole={membership.role}
+            userId={user.id}
+          />
         </div>
       </div>
-      
-      <div className="grid gap-6">
-        {/* Invitations Management */}
-        <CompanyInvitations 
-          companyId={company.id} 
-          userRole={membership.role} 
-        />
-
-        
-        {/* Team Members Management */}
-        <ManageTeamMembers 
-          companyId={company.id} 
-          userRole={membership.role}
-          userId={user.id}
-        />
-      </div>
-    </div>
+    </CompanyLayout>
   );
 }
