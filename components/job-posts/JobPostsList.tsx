@@ -19,8 +19,9 @@ import {
   TabsList, 
   TabsTrigger 
 } from '@/components/ui/tabs';
-import { Loader2, Eye, Edit, Trash2, AlertCircle } from 'lucide-react';
+import { Loader2, Eye, Edit, Trash2, AlertCircle, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { DeleteJobPostButton } from './DeleteJobPostButton';
 
 interface JobPost {
   id: string;
@@ -47,6 +48,20 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
   
   // Determine if user can manage job posts
   const canManageJobPosts = ['owner', 'admin', 'hr'].includes(userRole);
+  
+  // Extract company handle from URL
+  const [companyHandle, setCompanyHandle] = useState<string>('');
+  
+  useEffect(() => {
+    // Get company handle from URL path
+    const pathParts = window.location.pathname.split('/');
+    const handleIndex = pathParts.findIndex(part => part === 'company') + 1;
+    const handle = handleIndex > 0 && handleIndex < pathParts.length 
+      ? pathParts[handleIndex] 
+      : '';
+    
+    setCompanyHandle(handle);
+  }, []);
   
   const fetchJobPosts = async () => {
     try {
@@ -82,33 +97,6 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
     fetchJobPosts();
   }, [companyId, activeTab]);
   
-  const handleDeleteJobPost = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this job post?')) {
-      return;
-    }
-    
-    try {
-      setDeletingId(id);
-      
-      const response = await fetch(`/api/companies/${companyId}/job-posts/${id}`, {
-        method: 'DELETE',
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete job post');
-      }
-      
-      // Remove the deleted job post from the list
-      setJobPosts(prev => prev.filter(post => post.id !== id));
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete job post');
-    } finally {
-      setDeletingId(null);
-    }
-  };
-  
   return (
     <div className="space-y-4">
       {error && (
@@ -121,13 +109,27 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
         </div>
       )}
       
-      <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4 bg-[#f8f5ff] border-[#c9a0ff]/30">
-          <TabsTrigger value="all" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">All Jobs</TabsTrigger>
-          <TabsTrigger value="published" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">Published</TabsTrigger>
-          <TabsTrigger value="drafts" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">Drafts</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div className="flex flex-col md:flex-row items-start justify-between gap-4 mb-6">
+        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-4 bg-[#f8f5ff] border-[#c9a0ff]/30">
+            <TabsTrigger value="all" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">All Jobs</TabsTrigger>
+            <TabsTrigger value="published" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">Published</TabsTrigger>
+            <TabsTrigger value="drafts" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">Drafts</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
+        {canManageJobPosts && (
+          <Button 
+            asChild 
+            className="mt-0 bg-[#8f00ff] hover:bg-[#4b0076] whitespace-nowrap"
+          >
+            <Link href={`/dashboard/company/${companyHandle}/jobs/create`}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create Job Post
+            </Link>
+          </Button>
+        )}
+      </div>
       
       {loading ? (
         <div className="flex justify-center items-center h-40">
@@ -149,7 +151,7 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
               variant="outline" 
               className="mt-4 border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]"
             >
-              <Link href={`/dashboard/company/jobs/create`}>
+              <Link href={`/dashboard/company/${companyHandle}/jobs/create`}>
                 Create Your First Job Post
               </Link>
             </Button>
@@ -195,7 +197,7 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
                         className="h-8 w-8 p-0 hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
                         asChild
                       >
-                        <Link href={`/jobs/${job.id}`}>
+                        <Link href={`/dashboard/company/${companyHandle}/jobs/${job.id}`}>
                           <Eye className="h-4 w-4" />
                           <span className="sr-only">View</span>
                         </Link>
@@ -209,26 +211,19 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
                             className="h-8 w-8 p-0 hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
                             asChild
                           >
-                            <Link href={`/dashboard/company/jobs/${job.id}/edit`}>
+                            <Link href={`/dashboard/company/${companyHandle}/jobs/${job.id}/edit`}>
                               <Edit className="h-4 w-4" />
                               <span className="sr-only">Edit</span>
                             </Link>
                           </Button>
                           
-                          <Button
+                          <DeleteJobPostButton
+                            companyId={companyId}
+                            jobPostId={job.id}
                             variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => handleDeleteJobPost(job.id)}
-                            disabled={deletingId === job.id}
-                          >
-                            {deletingId === job.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                            <span className="sr-only">Delete</span>
-                          </Button>
+                            size="icon"
+                            onDeleteSuccess={fetchJobPosts}
+                          />
                         </>
                       )}
                     </div>

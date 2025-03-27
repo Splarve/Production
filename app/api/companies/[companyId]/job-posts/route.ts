@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: { companyId: string } }
 ) {
   try {
-    const { companyId } = params;
+    const { companyId } = await params;
     const { searchParams } = new URL(request.url);
     const publishedParam = searchParams.get('published');
     

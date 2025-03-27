@@ -1,4 +1,4 @@
-// components/job-posts/JobPostForm.tsx
+// components/job-posts/JobPostForm.tsx - Simplified version
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Switch } from '@/components/ui/switch';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 // Dynamically import Quill to avoid SSR issues
@@ -87,6 +88,20 @@ export function JobPostForm({
   const [error, setError] = useState<string | null>(null);
   const [skillInput, setSkillInput] = useState('');
   
+  // Extract company handle for correct routing
+  const [companyHandle, setCompanyHandle] = useState<string>('');
+  
+  useEffect(() => {
+    // Get company handle from URL path
+    const pathParts = window.location.pathname.split('/');
+    const handleIndex = pathParts.findIndex(part => part === 'company') + 1;
+    const handle = handleIndex > 0 && handleIndex < pathParts.length 
+      ? pathParts[handleIndex] 
+      : '';
+    
+    setCompanyHandle(handle);
+  }, []);
+  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -117,8 +132,8 @@ export function JobPostForm({
     }));
   };
   
-  const handlePublishChange = (publish: boolean) => {
-    setFormData(prev => ({ ...prev, published: publish }));
+  const handlePublishedChange = (checked: boolean) => {
+    setFormData(prev => ({ ...prev, published: checked }));
   };
   
   const validateForm = () => {
@@ -180,7 +195,7 @@ export function JobPostForm({
       if (onSuccess) {
         onSuccess(result.id || jobPostId);
       } else {
-        router.push(`/dashboard/company/jobs/${result.id || jobPostId}`);
+        router.push(`/dashboard/company/${companyHandle}/jobs/${result.id || jobPostId}`);
       }
     } catch (err: any) {
       setError(err.message || 'An error occurred');
@@ -357,27 +372,15 @@ export function JobPostForm({
               </p>
             </div>
             
-            <div className="flex gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handlePublishChange(false)}
-                className={!formData.published 
-                  ? 'border-[#8f00ff] text-[#8f00ff] bg-[#c9a0ff]/10 hover:bg-[#c9a0ff]/20 hover:text-[#8f00ff] hover:border-[#8f00ff]' 
-                  : 'border-[#c9a0ff] hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff] hover:border-[#c9a0ff]'}
-              >
-                Save as Draft
-              </Button>
-              <Button
-                type="button"
-                variant="default"
-                onClick={() => handlePublishChange(true)}
-                className={formData.published 
-                  ? 'bg-[#8f00ff] hover:bg-[#4b0076] text-white border-[#8f00ff] hover:border-[#4b0076]' 
-                  : 'bg-[#c9a0ff]/50 hover:bg-[#8f00ff] text-white border-transparent hover:border-[#8f00ff]'}
-              >
-                Publish
-              </Button>
+            <div className="flex items-center gap-2">
+              <Switch 
+                id="published" 
+                checked={formData.published}
+                onCheckedChange={handlePublishedChange}
+              />
+              <Label htmlFor="published" className="cursor-pointer">
+                {formData.published ? 'Published' : 'Draft'}
+              </Label>
             </div>
           </div>
         </CardContent>
@@ -401,10 +404,10 @@ export function JobPostForm({
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {isEditing ? 'Updating...' : 'Creating...'}
+              {isEditing ? 'Saving...' : 'Creating...'}
             </>
           ) : (
-            <>{isEditing ? 'Update Job Post' : 'Create Job Post'}</>
+            <>{isEditing ? 'Save Job Post' : 'Create Job Post'}</>
           )}
         </Button>
       </div>

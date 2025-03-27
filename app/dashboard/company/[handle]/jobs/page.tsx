@@ -8,7 +8,7 @@ import { JobPostsList } from '@/components/job-posts/JobPostsList';
 import { CompanyLayout } from '@/components/dashboard/company-layout';
 
 export default async function CompanyJobsPage({ params }: { params: { handle: string } }) {
-  const { handle } = params;
+  const { handle } = await params;
   const supabase = await createClient();
   
   // Get current user
@@ -95,7 +95,11 @@ export default async function CompanyJobsPage({ params }: { params: { handle: st
           )}
         </div>
         
-        <JobPostsList companyId={company.id} userRole={membership.role} />
+        <JobPostsList 
+          companyId={company.id} 
+          userRole={membership.role} 
+          companyHandle={handle} 
+        />
       </div>
     </CompanyLayout>
   );
