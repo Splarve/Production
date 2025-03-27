@@ -23,7 +23,7 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 const QuillEditor = dynamic(() => import('./QuillEditor'), { 
   ssr: false,
   loading: () => <div className="h-64 border rounded-md flex items-center justify-center">
-    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    <Loader2 className="h-6 w-6 animate-spin text-[#8f00ff]" />
   </div>
 });
 
@@ -199,10 +199,10 @@ export function JobPostForm({
       )}
       
       <Tabs value={currentTab} onValueChange={setCurrentTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="details">Job Details</TabsTrigger>
-          <TabsTrigger value="description">Description</TabsTrigger>
-          <TabsTrigger value="requirements">Requirements</TabsTrigger>
+        <TabsList className="mb-4 bg-[#f8f5ff] border-[#c9a0ff]/30">
+          <TabsTrigger value="details" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">Job Details</TabsTrigger>
+          <TabsTrigger value="description" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">Description</TabsTrigger>
+          <TabsTrigger value="requirements" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">Requirements</TabsTrigger>
         </TabsList>
         
         <TabsContent value="details" className="space-y-4">
@@ -215,6 +215,7 @@ export function JobPostForm({
               onChange={handleInputChange}
               placeholder="e.g. Senior Software Engineer"
               required
+              className="border-[#c9a0ff]/50 focus:border-[#8f00ff] focus:ring-[#8f00ff]/20"
             />
           </div>
           
@@ -226,6 +227,7 @@ export function JobPostForm({
               value={formData.location}
               onChange={handleInputChange}
               placeholder="e.g. New York, NY or Remote"
+              className="border-[#c9a0ff]/50 focus:border-[#8f00ff] focus:ring-[#8f00ff]/20"
             />
           </div>
           
@@ -236,7 +238,7 @@ export function JobPostForm({
                 value={formData.jobType}
                 onValueChange={(value) => handleSelectChange('jobType', value)}
               >
-                <SelectTrigger id="jobType">
+                <SelectTrigger id="jobType" className="border-[#c9a0ff]/50 focus:ring-[#8f00ff]/20 focus:border-[#8f00ff]">
                   <SelectValue placeholder="Select job type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -255,7 +257,7 @@ export function JobPostForm({
                 value={formData.experienceLevel}
                 onValueChange={(value) => handleSelectChange('experienceLevel', value)}
               >
-                <SelectTrigger id="experienceLevel">
+                <SelectTrigger id="experienceLevel" className="border-[#c9a0ff]/50 focus:ring-[#8f00ff]/20 focus:border-[#8f00ff]">
                   <SelectValue placeholder="Select experience level" />
                 </SelectTrigger>
                 <SelectContent>
@@ -277,6 +279,7 @@ export function JobPostForm({
               value={formData.salaryRange}
               onChange={handleInputChange}
               placeholder="e.g. $80,000 - $100,000"
+              className="border-[#c9a0ff]/50 focus:border-[#8f00ff] focus:ring-[#8f00ff]/20"
             />
           </div>
         </TabsContent>
@@ -300,8 +303,8 @@ export function JobPostForm({
                 id="skillInput"
                 value={skillInput}
                 onChange={(e) => setSkillInput(e.target.value)}
-                // components/job-posts/JobPostForm.tsx (continued)
                 placeholder="e.g. React"
+                className="border-[#c9a0ff]/50 focus:border-[#8f00ff] focus:ring-[#8f00ff]/20"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
@@ -313,6 +316,7 @@ export function JobPostForm({
                 type="button" 
                 onClick={handleAddSkill}
                 variant="outline"
+                className="border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]"
               >
                 Add
               </Button>
@@ -323,13 +327,13 @@ export function JobPostForm({
                 {formData.skills.map((skill) => (
                   <div 
                     key={skill}
-                    className="flex items-center gap-1 bg-primary/10 text-primary rounded-full px-3 py-1"
+                    className="flex items-center gap-1 bg-[#c9a0ff]/10 text-[#8f00ff] rounded-full px-3 py-1 border border-[#c9a0ff]/30"
                   >
                     <span>{skill}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveSkill(skill)}
-                      className="text-primary hover:text-red-500 focus:outline-none"
+                      className="text-[#8f00ff] hover:text-red-500 focus:outline-none"
                     >
                       &times;
                     </button>
@@ -341,11 +345,11 @@ export function JobPostForm({
         </TabsContent>
       </Tabs>
       
-      <Card>
+      <Card className="border-[#c9a0ff]/30">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-lg font-medium">Publish Status</h3>
+              <h3 className="text-lg font-medium text-[#4b0076]">Publish Status</h3>
               <p className="text-sm text-muted-foreground">
                 {formData.published 
                   ? 'This job post will be visible to job seekers'
@@ -358,7 +362,9 @@ export function JobPostForm({
                 type="button"
                 variant="outline"
                 onClick={() => handlePublishChange(false)}
-                className={!formData.published ? 'border-primary text-primary' : ''}
+                className={!formData.published 
+                  ? 'border-[#8f00ff] text-[#8f00ff] bg-[#c9a0ff]/10 hover:bg-[#c9a0ff]/20 hover:text-[#8f00ff] hover:border-[#8f00ff]' 
+                  : 'border-[#c9a0ff] hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff] hover:border-[#c9a0ff]'}
               >
                 Save as Draft
               </Button>
@@ -366,7 +372,9 @@ export function JobPostForm({
                 type="button"
                 variant="default"
                 onClick={() => handlePublishChange(true)}
-                className={formData.published ? 'bg-primary text-white' : ''}
+                className={formData.published 
+                  ? 'bg-[#8f00ff] hover:bg-[#4b0076] text-white border-[#8f00ff] hover:border-[#4b0076]' 
+                  : 'bg-[#c9a0ff]/50 hover:bg-[#8f00ff] text-white border-transparent hover:border-[#8f00ff]'}
               >
                 Publish
               </Button>
@@ -381,10 +389,15 @@ export function JobPostForm({
           variant="outline"
           onClick={() => router.back()}
           disabled={isSubmitting}
+          className="border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]"
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button 
+          type="submit" 
+          disabled={isSubmitting}
+          className="bg-[#8f00ff] hover:bg-[#4b0076] text-white"
+        >
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -122,20 +122,20 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
       )}
       
       <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="all">All Jobs</TabsTrigger>
-          <TabsTrigger value="published">Published</TabsTrigger>
-          <TabsTrigger value="drafts">Drafts</TabsTrigger>
+        <TabsList className="mb-4 bg-[#f8f5ff] border-[#c9a0ff]/30">
+          <TabsTrigger value="all" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">All Jobs</TabsTrigger>
+          <TabsTrigger value="published" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">Published</TabsTrigger>
+          <TabsTrigger value="drafts" className="data-[state=active]:bg-[#c9a0ff]/20 data-[state=active]:text-[#8f00ff]">Drafts</TabsTrigger>
         </TabsList>
       </Tabs>
       
       {loading ? (
         <div className="flex justify-center items-center h-40">
-          <Loader2 size={24} className="animate-spin text-muted-foreground" />
+          <Loader2 size={24} className="animate-spin text-[#8f00ff]" />
         </div>
       ) : jobPosts.length === 0 ? (
-        <div className="text-center py-8 border rounded-lg">
-          <h3 className="text-lg font-medium mb-2">No job posts found</h3>
+        <div className="text-center py-8 border rounded-lg border-[#c9a0ff]/30">
+          <h3 className="text-lg font-medium mb-2 text-[#4b0076]">No job posts found</h3>
           <p className="text-muted-foreground">
             {activeTab === 'all' 
               ? 'You haven\'t created any job posts yet' 
@@ -147,7 +147,7 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
             <Button 
               asChild 
               variant="outline" 
-              className="mt-4"
+              className="mt-4 border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]"
             >
               <Link href={`/dashboard/company/jobs/create`}>
                 Create Your First Job Post
@@ -156,28 +156,28 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
           )}
         </div>
       ) : (
-        <div className="rounded-md border">
+        <div className="rounded-md border border-[#c9a0ff]/30">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Job Title</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+              <TableRow className="bg-[#f8f5ff]">
+                <TableHead className="text-[#4b0076]">Job Title</TableHead>
+                <TableHead className="text-[#4b0076]">Location</TableHead>
+                <TableHead className="text-[#4b0076]">Type</TableHead>
+                <TableHead className="text-[#4b0076]">Status</TableHead>
+                <TableHead className="text-[#4b0076]">Date</TableHead>
+                <TableHead className="text-right text-[#4b0076]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {jobPosts.map((job) => (
-                <TableRow key={job.id}>
+                <TableRow key={job.id} className="hover:bg-[#f8f5ff]">
                   <TableCell className="font-medium">{job.title}</TableCell>
                   <TableCell>{job.location || 'Not specified'}</TableCell>
                   <TableCell className="capitalize">{job.job_type || 'Not specified'}</TableCell>
                   <TableCell>
                     <Badge
                       variant={job.published ? "default" : "outline"}
-                      className={job.published ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}
+                      className={job.published ? "bg-[#c9a0ff]/20 text-[#8f00ff] hover:bg-[#c9a0ff]/30 border-[#c9a0ff]" : "border-[#c9a0ff]/50 text-[#4b0076]"}
                     >
                       {job.published ? 'Published' : 'Draft'}
                     </Badge>
@@ -192,7 +192,7 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0"
+                        className="h-8 w-8 p-0 hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
                         asChild
                       >
                         <Link href={`/jobs/${job.id}`}>
@@ -206,7 +206,7 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-8 w-8 p-0"
+                            className="h-8 w-8 p-0 hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
                             asChild
                           >
                             <Link href={`/dashboard/company/jobs/${job.id}/edit`}>

@@ -162,7 +162,10 @@ async function sendInvitation(
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="gap-1">
+        <Button 
+          size="sm" 
+          className="gap-1 bg-[#c9a0ff] hover:bg-[#8f00ff] text-white"
+        >
           <UserPlus size={16} />
           Invite Member
         </Button>
@@ -239,10 +242,15 @@ async function sendInvitation(
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={loading}
+              className="border-[#c9a0ff] text-[#4b0076] hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button 
+              type="submit" 
+              disabled={loading}
+              className="bg-[#c9a0ff] hover:bg-[#8f00ff] text-white"
+            >
               {loading ? 'Sending...' : 'Send Invitation'}
             </Button>
           </DialogFooter>
