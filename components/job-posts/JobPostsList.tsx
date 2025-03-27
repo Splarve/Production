@@ -1,6 +1,6 @@
-// components/job-posts/JobPostsList.tsx
 'use client';
 
+// components/job-posts/JobPostsList.tsx
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -19,7 +19,7 @@ import {
   TabsList, 
   TabsTrigger 
 } from '@/components/ui/tabs';
-import { Loader2, Eye, Edit, Trash2, AlertCircle, PlusCircle } from 'lucide-react';
+import { Loader2, Eye, Edit, PlusCircle, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { DeleteJobPostButton } from './DeleteJobPostButton';
 
@@ -44,7 +44,6 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
   const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   
   // Determine if user can manage job posts
   const canManageJobPosts = ['owner', 'admin', 'hr'].includes(userRole);
@@ -193,7 +192,7 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
-                        size="sm"
+                        size="icon"
                         className="h-8 w-8 p-0 hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
                         asChild
                       >
@@ -207,7 +206,7 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
                         <>
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
                             className="h-8 w-8 p-0 hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
                             asChild
                           >

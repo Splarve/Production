@@ -84,15 +84,6 @@ export default async function CompanyJobsPage({ params }: { params: { handle: st
             <h1 className="text-2xl font-bold text-[#4b0076]">{company.name} Jobs</h1>
             <p className="text-muted-foreground">Manage job postings for your company</p>
           </div>
-          
-          {canCreateJobPost && (
-            <Button asChild className="mt-4 md:mt-0 bg-[#8f00ff] hover:bg-[#4b0076]">
-              <Link href={`/dashboard/company/${handle}/jobs/create`}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create Job Post
-              </Link>
-            </Button>
-          )}
         </div>
         
         <JobPostsList 

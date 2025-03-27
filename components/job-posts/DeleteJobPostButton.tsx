@@ -28,8 +28,8 @@ interface DeleteJobPostButtonProps {
 export function DeleteJobPostButton({
   companyId,
   jobPostId,
-  variant = 'outline',
-  size = 'sm',
+  variant = 'ghost',
+  size = 'icon',
   onDeleteSuccess
 }: DeleteJobPostButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false);
@@ -68,6 +68,55 @@ export function DeleteJobPostButton({
     }
   };
 
+  // For icon buttons in tables
+  if (size === 'icon') {
+    return (
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogTrigger asChild>
+          <Button
+            variant={variant}
+            size="icon"
+            className="h-8 w-8 p-0 hover:bg-[#c9a0ff]/10 hover:text-red-600"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="sr-only">Delete</span>
+          </Button>
+        </AlertDialogTrigger>
+        
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Job Post</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this job post? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    );
+  }
+
+  // For normal buttons
   return (
     <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <AlertDialogTrigger asChild>

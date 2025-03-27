@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: { companyId: string; jobPostId: string } }
 ) {
   try {
-    const { companyId, jobPostId } = params;
+    const { companyId, jobPostId } = await params;
     const supabase = await createClient();
     
     // Query the job post directly
