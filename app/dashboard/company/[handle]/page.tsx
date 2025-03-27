@@ -79,7 +79,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
       <div className="max-w-[1200px] mx-auto">
         <div className="flex flex-col md:flex-row items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <div className="h-16 w-16 rounded-full bg-[#c9a0ff]/20 flex items-center justify-center">
               {company.logo_url ? (
                 <img 
                   src={company.logo_url}
@@ -87,24 +87,24 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                   className="h-14 w-14 rounded-full object-cover"
                 />
               ) : (
-                <Building className="h-8 w-8 text-primary" />
+                <Building className="h-8 w-8 text-[#8f00ff]" />
               )}
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{company.name}</h1>
+              <h1 className="text-2xl font-bold text-[#4b0076]">{company.name}</h1>
               <p className="text-muted-foreground">@{company.handle} • Your role: {membership.role}</p>
             </div>
           </div>
           
           {isOwnerOrAdmin && (
             <div className="mt-4 md:mt-0 flex gap-2">
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]">
                 <Link href={`/dashboard/company/${company.handle}/settings`}>
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </Link>
               </Button>
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]">
                 <Link href={`/dashboard/company/${company.handle}/edit`}>
                   <Edit className="mr-2 h-4 w-4" />
                   Edit Profile
@@ -115,9 +115,9 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
         </div>
         
         <div className="grid gap-6 md:grid-cols-2">
-          <Card>
+          <Card className="border-[#c9a0ff]/30">
             <CardHeader>
-              <CardTitle>Company Information</CardTitle>
+              <CardTitle className="text-[#4b0076]">Company Information</CardTitle>
             </CardHeader>
             <CardContent>
               {company.description ? (
@@ -133,7 +133,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
                     href={company.website} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-primary hover:underline"
+                    className="text-[#8f00ff] hover:underline"
                   >
                     {company.website}
                   </a>
@@ -141,9 +141,9 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
               )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-[#c9a0ff]/30">
             <CardHeader>
-              <CardTitle>Job Posts</CardTitle>
+              <CardTitle className="text-[#4b0076]">Job Posts</CardTitle>
               <CardDescription>
                 Manage and create job postings
               </CardDescription>
@@ -152,7 +152,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
               <div className="space-y-4">
                 <p>Create job postings and manage applications.</p>
                 
-                <Button asChild variant="outline" size="sm">
+                <Button asChild variant="outline" size="sm" className="border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]">
                   <Link href={`/dashboard/company/${company.handle}/jobs`}>
                     <Briefcase className="mr-2 h-4 w-4" />
                     Manage Jobs
@@ -162,9 +162,9 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-[#c9a0ff]/30">
             <CardHeader>
-              <CardTitle>Team Members</CardTitle>
+              <CardTitle className="text-[#4b0076]">Team Members</CardTitle>
               <CardDescription>
                 Manage your company team
               </CardDescription>
@@ -173,7 +173,7 @@ export default async function CompanyPage({ params }: CompanyPageProps) {
               <div className="space-y-4">
                 <p>View and manage your company team members and invitations.</p>
                 
-                <Button asChild variant="outline" size="sm">
+                <Button asChild variant="outline" size="sm" className="border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]">
                   <Link href={`/dashboard/company/${company.handle}/members`}>
                     <Users className="mr-2 h-4 w-4" />
                     {canManageMembers ? 'Manage Team Members' : 'View Team Members'}

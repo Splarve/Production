@@ -26,6 +26,7 @@ import {
   SidebarRail,
   useSidebar
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 interface CompanySidebarProps {
   handle: string;
@@ -37,8 +38,24 @@ export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
   if (!handle) return null;
   
   const { state, toggleSidebar } = useSidebar();
+  
+  // Updated isActive function for more precise path matching
   const isActive = (path: string) => {
-    return currentPath === path || (path !== `/dashboard/company/${handle}` && currentPath.startsWith(path));
+    // Exact match for paths
+    if (currentPath === path) return true;
+    
+    // Special case for dashboard path to avoid triggering on sub-paths
+    if (path === `/dashboard/company/${handle}` && currentPath === `/dashboard/company/${handle}`) {
+      return true;
+    }
+    
+    // For other pages, check if current path starts with the nav item path
+    // But only for nested routes (not the company home or main dashboard)
+    if (path !== `/dashboard/company` && path !== `/dashboard/company/${handle}`) {
+      return currentPath.startsWith(path);
+    }
+    
+    return false;
   };
 
   // Company navigation items
@@ -82,22 +99,26 @@ export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
 
   return (
     <Sidebar 
-      className="transition-all duration-300 h-screen pt-6"
+      className="transition-all duration-300 h-screen bg-[#f8f5ff] p-0 overflow-hidden"
       collapsible="icon"
       side="left"
     >
-      <div className="mb-6">
-        <div className="flex items-center justify-center gap-2 font-semibold px-4">
-          <Building className="h-6 w-6" />
-          {state === 'expanded' && (
-            <span className="text-lg transition-opacity duration-200">Splarve</span>
-          )}
+      <SidebarHeader className="bg-[#f8f5ff] p-0">
+        <div className="py-6 bg-[#f8f5ff]">
+          <div className="flex items-center justify-center gap-2 font-semibold px-4">
+            <Building className="h-6 w-6 text-[#8f00ff]" />
+            {state === 'expanded' && (
+              <span className="text-lg transition-opacity duration-200 bg-gradient-to-r from-[#8f00ff] to-[#c9a0ff] bg-clip-text text-transparent">Splarve</span>
+            )}
+          </div>
         </div>
-      </div>
+      </SidebarHeader>
       
-      <SidebarContent className="flex-1 overflow-y-auto">
+      <SidebarContent className="flex-1 overflow-y-auto bg-[#f8f5ff]">
         <SidebarGroup>
-          <SidebarGroupLabel>Company Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-[#4b0076] font-medium">
+            Company Navigation
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item, index) => (
@@ -105,10 +126,13 @@ export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
                   {item.url ? (
                     <SidebarMenuButton 
                       asChild
-                      className={isActive(item.url) ? 'bg-muted' : ''}
+                      className={cn(
+                        "hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]",
+                        isActive(item.url) ? 'bg-[#c9a0ff]/20 text-[#8f00ff]' : ''
+                      )}
                     >
                       <Link href={item.url} className="flex items-center gap-2">
-                        <item.icon className="h-5 w-5" />
+                        <item.icon className={cn("h-5 w-5", isActive(item.url) ? "text-[#8f00ff]" : "")} />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
@@ -116,7 +140,7 @@ export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
                     <SidebarMenuButton 
                       onClick={item.onClick}
                       aria-label={item.title}
-                      className="flex items-center gap-2"
+                      className="flex items-center gap-2 hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
                     >
                       <item.icon className="h-5 w-5" />
                       <span>{state === 'expanded' ? item.title : ''}</span>
@@ -129,17 +153,17 @@ export function CompanySidebar({ handle, currentPath }: CompanySidebarProps) {
         </SidebarGroup>
       </SidebarContent>
       
-      <SidebarFooter className="border-t p-4">
+      <SidebarFooter className="border-t p-4 bg-[#f8f5ff]">
         <div className="text-xs text-muted-foreground">
           {state === 'expanded' && (
             <>
-              <span className="font-medium">Splarve</span> • Company Dashboard
+              <span className="font-medium text-[#8f00ff]">Splarve</span> • Company Dashboard
             </>
           )}
         </div>
       </SidebarFooter>
       
-      <SidebarRail />
+      <SidebarRail className="bg-[#f8f5ff]" />
     </Sidebar>
   );
 }
