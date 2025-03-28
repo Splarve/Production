@@ -6,10 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Edit, Building, MapPin, Clock, Briefcase, GraduationCap, Tag } from 'lucide-react';
+import { ArrowLeft, Edit, Building, MapPin, Clock, Briefcase, GraduationCap, Tag, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { CompanyLayout } from '@/components/dashboard/company-layout';
-import { DeleteJobPostButton } from '@/components/job-posts/DeleteJobPostButton';
+import { DeleteJobPostButtonWrapper } from '@/components/job-posts/DeleteJobPostButtonWrapper';
 
 export default async function ViewJobPostPage({ 
   params 
@@ -128,7 +127,7 @@ export default async function ViewJobPostPage({
   };
   
   return (
-    <CompanyLayout handle={handle} currentPath={currentPath}>
+    <div className="bg-gradient-to-br from-white to-[#f8f5ff] min-h-screen">
       <div className="container mx-auto py-8 px-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <Button 
@@ -156,12 +155,10 @@ export default async function ViewJobPostPage({
                 </Link>
               </Button>
               
-              <DeleteJobPostButton 
-                companyId={company.id} 
+              <DeleteJobPostButtonWrapper
+                companyId={company.id}
                 jobPostId={jobPostId}
-                onDeleteSuccess={() => {
-                  redirect(`/dashboard/company/${handle}/jobs`);
-                }}
+                companyHandle={handle}
               />
             </div>
           )}
@@ -317,6 +314,6 @@ export default async function ViewJobPostPage({
           </div>
         </div>
       </div>
-    </CompanyLayout>
+    </div>
   );
 }
