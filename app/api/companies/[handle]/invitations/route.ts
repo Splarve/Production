@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: { handle: string } }
 ) {
   try {
-    const { handle } = params;
+    const { handle } = await params;
     console.log("API: Fetching invitations for company handle:", handle);
     
     // Get company by handle first

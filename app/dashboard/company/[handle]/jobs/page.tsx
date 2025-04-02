@@ -89,7 +89,7 @@ export default async function CompanyJobsPage({ params }: { params: { handle: st
         <JobPostsList 
           companyId={company.id} 
           userRole={membership.role} 
-          companyHandle={handle} 
+          companyHandle={handle} // Make sure to pass the handle here
         />
       </div>
     </CompanyLayout>

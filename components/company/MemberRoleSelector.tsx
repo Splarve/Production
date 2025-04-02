@@ -22,6 +22,7 @@ type Role = {
 type MemberRoleSelectorProps = {
   userId: string;
   companyId: string;
+  companyHandle: string; // Add company handle
   currentRoleId: string;
   roles: Role[];
   isSelf: boolean;
@@ -32,6 +33,7 @@ type MemberRoleSelectorProps = {
 export const MemberRoleSelector = ({
   userId,
   companyId,
+  companyHandle,
   currentRoleId,
   roles,
   isSelf,
@@ -51,7 +53,8 @@ export const MemberRoleSelector = ({
     setIsLoading(true);
     
     try {
-      const response = await fetch(`/api/companies/${companyId}/members/${userId}/role-id`, {
+      // Use company handle instead of ID
+      const response = await fetch(`/api/companies/${companyHandle}/members/${userId}/role-id`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

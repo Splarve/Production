@@ -146,7 +146,7 @@ export default async function ViewJobPostPage({
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]"
+                className="border-[#c9a0ff]/50 text-[#4b0076] hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
                 asChild
               >
                 <Link href={`/dashboard/company/${handle}/jobs/${jobPostId}/edit`}>
@@ -156,9 +156,8 @@ export default async function ViewJobPostPage({
               </Button>
               
               <DeleteJobPostButtonWrapper
-                companyId={company.id}
+                companyHandle={handle} // Use handle instead of companyId
                 jobPostId={jobPostId}
-                companyHandle={handle}
               />
             </div>
           )}

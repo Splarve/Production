@@ -60,44 +60,44 @@ export const RoleForm = ({
   
   const router = useRouter();
   
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+// Handle form submission
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  
+  // Validate form
+  if (!roleName.trim()) {
+    setNameError('Role name is required');
+    return;
+  }
+  
+  setIsSubmitting(true);
+  
+  try {
+    // Determine if we're creating or updating
+    const isEditing = !!role;
+    const url = isEditing 
+      ? `/api/companies/${companyHandle}/roles/${role.id}`
+      : `/api/companies/${companyHandle}/roles`;
     
-    // Validate form
-    if (!roleName.trim()) {
-      setNameError('Role name is required');
-      return;
+    const method = isEditing ? 'PUT' : 'POST';
+    
+    // Only include name and color if we're creating or if the role is not a default role
+    const requestBody: any = {
+      permissions
+    };
+    
+    if (!isEditing || !role.is_default) {
+      requestBody.name = roleName;
+      requestBody.color = roleColor;
     }
     
-    setIsSubmitting(true);
-    
-    try {
-      // Determine if we're creating or updating
-      const isEditing = !!role;
-      const url = isEditing 
-        ? `/api/companies/${companyId}/roles/${role.id}`
-        : `/api/companies/${companyId}/roles`;
-      
-      const method = isEditing ? 'PUT' : 'POST';
-      
-      // Only include name and color if we're creating or if the role is not a default role
-      const requestBody: any = {
-        permissions
-      };
-      
-      if (!isEditing || !role.is_default) {
-        requestBody.name = roleName;
-        requestBody.color = roleColor;
-      }
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
       
       const data = await response.json();
       

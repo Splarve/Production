@@ -88,7 +88,10 @@ export default async function CreateJobPostPage({ params }: { params: { handle: 
           <p className="text-muted-foreground">Create a new job posting for {company.name}</p>
         </div>
         
-        <JobPostForm companyId={company.id} />
+        <JobPostForm 
+          companyId={company.id} 
+          companyHandle={handle} // Pass the handle
+        />
       </div>
     </CompanyLayout>
   );

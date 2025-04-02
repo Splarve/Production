@@ -98,6 +98,7 @@ export default async function CompanyMembersPage({ params }: { params: { handle:
           {/* Invitations Management */}
           <CompanyInvitations 
             companyId={company.id} 
+            companyHandle={handle} // Add handle
             userRole={membership.role} 
           />
 
@@ -105,6 +106,7 @@ export default async function CompanyMembersPage({ params }: { params: { handle:
           {/* Team Members Management */}
           <ManageTeamMembers 
             companyId={company.id} 
+            companyHandle={handle} // Add handle
             userRole={membership.role}
             userId={user.id}
           />

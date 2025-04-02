@@ -72,7 +72,7 @@ export const RolesList = ({ companyId, companyHandle }: RolesListProps) => {
   useEffect(() => {
     const fetchRoles = async () => {
       try {
-        const response = await fetch(`/api/companies/${companyId}/roles`);
+        const response = await fetch(`/api/companies/${companyHandle}/roles`);
         const data = await response.json();
         
         if (response.ok) {
@@ -89,14 +89,14 @@ export const RolesList = ({ companyId, companyHandle }: RolesListProps) => {
     };
     
     fetchRoles();
-  }, [companyId]);
+  }, [companyHandle]);
   
   // Handle role deletion
   const handleDeleteRole = async () => {
     if (!deleteRoleId || !transferRoleId) return;
     
     try {
-      const response = await fetch(`/api/companies/${companyId}/roles/${deleteRoleId}`, {
+      const response = await fetch(`/api/companies/${companyHandle}/roles/${deleteRoleId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

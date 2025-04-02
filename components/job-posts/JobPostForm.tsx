@@ -163,9 +163,10 @@ export function JobPostForm({
     setError(null);
     
     try {
+      // Use company handle in URL
       const url = isEditing
-        ? `/api/companies/${companyId}/job-posts/${jobPostId}`
-        : `/api/companies/${companyId}/job-posts`;
+        ? `/api/companies/${companyHandle}/job-posts/${jobPostId}`
+        : `/api/companies/${companyHandle}/job-posts`;
       
       const method = isEditing ? 'PUT' : 'POST';
       

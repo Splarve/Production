@@ -143,7 +143,7 @@ export default async function EditRolePage({
         
         <RoleForm 
           companyId={company.id} 
-          companyHandle={handle}
+          companyHandle={handle} // Make sure handle is passed
           groupedPermissions={groupedPermissions}
           role={role}
           currentPermissions={permissionsObj}

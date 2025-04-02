@@ -8,8 +8,6 @@ import { Database } from '@/utils/supabase/types';
 export async function getCompanyIdFromHandle(handle: string): Promise<string | null> {
     const supabase = await createClient();
     
-    // Debug log
-    console.log('Looking up company ID for handle:', handle);
     
     // Use maybeSingle() instead of single()
     const { data, error } = await supabase
@@ -38,9 +36,6 @@ export async function getCompanyIdFromHandle(handle: string): Promise<string | n
 export async function getCompanyFromHandle(handle: string): Promise<Database['public']['Tables']['companies']['Row'] | null> {
     const supabase = await createClient();
     
-    // Debug log
-    console.log('Looking up company with handle:', handle);
-    
     // Use maybeSingle() instead of single()
     const { data, error } = await supabase
       .from('companies')
@@ -58,7 +53,6 @@ export async function getCompanyFromHandle(handle: string): Promise<Database['pu
       return null;
     }
     
-    console.log('Found company:', data);
     return data;
   }
 

@@ -128,6 +128,7 @@ export default async function EditJobPostPage({
         
         <JobPostForm 
           companyId={company.id} 
+          companyHandle={handle} // Pass the handle
           initialData={formData} 
           jobPostId={jobPostId} 
         />

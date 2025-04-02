@@ -100,7 +100,10 @@ export default async function CompanyRolesPage({ params }: { params: { handle: s
           </Button>
         </div>
         
-        <RolesList companyId={company.id} companyHandle={handle} />
+        <RolesList 
+        companyId={company.id} 
+        companyHandle={handle} // Make sure handle is passed
+      />
       </div>
     </CompanyLayout>
   );

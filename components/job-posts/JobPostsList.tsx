@@ -1,6 +1,6 @@
+// components/job-posts/JobPostsList.tsx
 'use client';
 
-// components/job-posts/JobPostsList.tsx
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -37,9 +37,10 @@ interface JobPost {
 interface JobPostsListProps {
   companyId: string;
   userRole: string;
+  companyHandle: string; // Add this prop to receive the handle
 }
 
-export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
+export function JobPostsList({ companyId, userRole, companyHandle }: JobPostsListProps) {
   const [jobPosts, setJobPosts] = useState<JobPost[]>([]);
   const [activeTab, setActiveTab] = useState('all');
   const [loading, setLoading] = useState(true);
@@ -48,27 +49,14 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
   // Determine if user can manage job posts
   const canManageJobPosts = ['owner', 'admin', 'hr'].includes(userRole);
   
-  // Extract company handle from URL
-  const [companyHandle, setCompanyHandle] = useState<string>('');
-  
-  useEffect(() => {
-    // Get company handle from URL path
-    const pathParts = window.location.pathname.split('/');
-    const handleIndex = pathParts.findIndex(part => part === 'company') + 1;
-    const handle = handleIndex > 0 && handleIndex < pathParts.length 
-      ? pathParts[handleIndex] 
-      : '';
-    
-    setCompanyHandle(handle);
-  }, []);
-  
   const fetchJobPosts = async () => {
     try {
       setLoading(true);
       setError(null);
       
       // Construct URL with published filter if needed
-      let url = `/api/companies/${companyId}/job-posts`;
+      // Use companyHandle instead of companyId in the URL
+      let url = `/api/companies/${companyHandle}/job-posts`;
       if (activeTab === 'published') {
         url += '?published=true';
       } else if (activeTab === 'drafts') {
@@ -94,7 +82,7 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
   // Fetch job posts when component mounts or tab changes
   useEffect(() => {
     fetchJobPosts();
-  }, [companyId, activeTab]);
+  }, [companyHandle, activeTab]); // Changed from companyId to companyHandle
   
   return (
     <div className="space-y-4">
@@ -217,7 +205,7 @@ export function JobPostsList({ companyId, userRole }: JobPostsListProps) {
                           </Button>
                           
                           <DeleteJobPostButton
-                            companyId={companyId}
+                            companyHandle={companyHandle}
                             jobPostId={job.id}
                             variant="ghost"
                             size="icon"

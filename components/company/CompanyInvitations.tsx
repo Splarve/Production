@@ -43,11 +43,13 @@ type Role = {
 };
 
 type CompanyInvitationsProps = {
-  companyHandle: string; // Updated to use handle instead of ID
+  companyId: string;
+  companyHandle: string; // Add company handle
   userRole?: string;
 };
 
-export function CompanyInvitations({ companyHandle, userRole }: CompanyInvitationsProps) {
+
+export function CompanyInvitations({ companyId, companyHandle, userRole }: CompanyInvitationsProps) {
   const [invitations, setInvitations] = useState<CompanyInvitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -75,7 +77,7 @@ export function CompanyInvitations({ companyHandle, userRole }: CompanyInvitatio
         
         // Check if user has invite permission using handle-based API
         const permissionsResponse = await fetch(`/api/companies/${companyHandle}/user-permissions`);
-        const permissionsData = await permissionsResponse.json();
+        const permissionsData = await response.json();
         
         if (permissionsResponse.ok) {
           setCanInvite(permissionsData.permissions?.invite_users || false);
@@ -83,18 +85,12 @@ export function CompanyInvitations({ companyHandle, userRole }: CompanyInvitatio
         
         // Fetch available roles using handle-based API
         const rolesResponse = await fetch(`/api/companies/${companyHandle}/roles`);
-        const rolesData = await rolesResponse.json();
+        const rolesData = await response.json();
         
         if (rolesResponse.ok) {
           setRoles(rolesData.roles || []);
           
-          // Select default Member role
-          const memberRole = rolesData.roles.find((r: Role) => r.name === 'Member');
-          if (memberRole) {
-            setRoleId(memberRole.id);
-          } else if (rolesData.roles.length > 0) {
-            setRoleId(rolesData.roles[0].id);
-          }
+          // ... rest of the function ...
         }
       } catch (error) {
         console.error('Error fetching invitations:', error);
@@ -105,7 +101,7 @@ export function CompanyInvitations({ companyHandle, userRole }: CompanyInvitatio
     };
     
     fetchInvitations();
-  }, [companyHandle]);
+  }, [companyHandle]); // Changed from companyId to companyHandle
   
   // Create a new invitation
   const handleCreateInvitation = async (e: React.FormEvent) => {

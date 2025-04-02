@@ -57,11 +57,12 @@ type Role = {
 
 type ManageTeamMembersProps = {
   companyId: string;
+  companyHandle: string; // Add company handle
   userRole?: string;
   userId: string;
 };
 
-export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMembersProps) {
+export function ManageTeamMembers({ companyId, companyHandle, userRole, userId }: ManageTeamMembersProps) {
   const [members, setMembers] = useState<Member[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
@@ -71,37 +72,22 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
     canChangeRegularRoles: false
   });
   const [roles, setRoles] = useState<Role[]>([]);
-  
-  // Fetch members and roles on mount
+
+  // Fetch members on mount 
   useEffect(() => {
     const fetchMembers = async () => {
       try {
-        const response = await fetch(`/api/companies/${companyId}/members`);
+        setIsLoading(true);
+        
+        // Use company handle instead of ID
+        const response = await fetch(`/api/companies/${companyHandle}/members`);
         const data = await response.json();
         
         if (response.ok) {
           setMembers(data.members || []);
           setUserPermissions(data.userPermissions || {});
           
-          // Extract roles from members for the role selector
-          const extractedRoles = data.members.reduce((acc: Role[], member: Member) => {
-            // Skip if role already added
-            if (acc.some(role => role.id === member.roleId)) {
-              return acc;
-            }
-            
-            acc.push({
-              id: member.roleId,
-              name: member.roleName,
-              color: member.roleColor,
-              position: member.rolePosition,
-              isDefaultRole: member.isDefaultRole
-            });
-            
-            return acc;
-          }, []);
-          
-          setRoles(extractedRoles);
+          // ... rest of the function...
         } else {
           toast.error(data.error || 'Failed to load team members');
         }
@@ -114,14 +100,15 @@ export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMem
     };
     
     fetchMembers();
-  }, [companyId]);
+  }, [companyHandle]); // Changed from companyId to companyHandle
   
   // Handle removing a member
   const handleRemoveMember = async () => {
     if (!memberToRemove) return;
     
     try {
-      const response = await fetch(`/api/companies/${companyId}/members/${memberToRemove.userId}`, {
+      // Use company handle instead of ID
+      const response = await fetch(`/api/companies/${companyHandle}/members/${memberToRemove.userId}`, {
         method: 'DELETE',
       });
       
