@@ -1,14 +1,23 @@
-// app/api/companies/[companyId]/roles/route.ts
+// app/api/companies/[handle]/roles/route.ts
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyFromHandle } from '@/utils/companies/handle';
 
 // GET: Get all roles for a company
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { handle: string } }
 ) {
   try {
-    const { companyId } = await params;
+    const { handle } = await params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Verify the user is authenticated
@@ -23,7 +32,7 @@ export async function GET(
       'user_has_permission',
       {
         user_id: user.id,
-        company_id: companyId,
+        company_id: company.id,
         required_permission: 'view_members'
       }
     );
@@ -44,7 +53,7 @@ export async function GET(
         created_at,
         updated_at
       `)
-      .eq('company_id', companyId)
+      .eq('company_id', company.id)
       .order('position', { ascending: true });
     
     if (rolesError) {
@@ -63,7 +72,7 @@ export async function GET(
       
       if (permissionsError) {
         console.error(`Error fetching permissions for role ${role.id}:`, permissionsError);
-        return { ...role, permissions: [] };
+        return { ...role, permissions: {} };
       }
       
       // Convert permissions array to object for easier use in frontend
@@ -85,10 +94,18 @@ export async function GET(
 // POST: Create a new role
 export async function POST(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { handle: string } }
 ) {
   try {
-    const { companyId } = params;
+    const { handle } = await params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Verify the user is authenticated
@@ -110,7 +127,7 @@ export async function POST(
     const { data: roleId, error: roleError } = await supabase.rpc(
       'create_company_role',
       {
-        p_company_id: companyId,
+        p_company_id: company.id,
         p_name: name,
         p_color: color || null,
         p_position: position || 0,

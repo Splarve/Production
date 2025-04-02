@@ -1,14 +1,23 @@
-// app/api/companies/[companyId]/job-posts/[jobPostId]/route.ts
+// app/api/companies/[handle]/job-posts/[jobPostId]/route.ts
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyFromHandle } from '@/utils/companies/handle';
 
 // GET: Fetch job post details
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string; jobPostId: string } }
+  { params }: { params: { handle: string; jobPostId: string } }
 ) {
   try {
-    const { companyId, jobPostId } = await params;
+    const { handle, jobPostId } = await params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Query the job post directly
@@ -16,7 +25,7 @@ export async function GET(
       .from('job_posts')
       .select('*')
       .eq('id', jobPostId)
-      .eq('company_id', companyId)
+      .eq('company_id', company.id)
       .single();
     
     if (error) {
@@ -36,10 +45,18 @@ export async function GET(
 // PUT: Update job post
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { companyId: string; jobPostId: string } }
+  { params }: { params: { handle: string; jobPostId: string } }
 ) {
   try {
-    const { companyId, jobPostId } = params;
+    const { handle, jobPostId } = params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Get current user
@@ -103,10 +120,18 @@ export async function PUT(
 // DELETE: Delete job post
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { companyId: string; jobPostId: string } }
+  { params }: { params: { handle: string; jobPostId: string } }
 ) {
   try {
-    const { companyId, jobPostId } = params;
+    const { handle, jobPostId } = params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Use the secure function to delete a job post

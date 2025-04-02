@@ -1,5 +1,5 @@
 'use client';
-// components/company/CompanyInvitations.tsx
+// components/company/CompanyInvitations.tsx (updated to use handles)
 import { useState, useEffect } from 'react';
 import { 
   Card, 
@@ -32,16 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-type Invitation = {
-  id: string;
-  email: string;
-  role: string;
-  roleId?: string; // For role-based invitations
-  message?: string;
-  createdAt: string;
-  expiresAt: string;
-};
+import { CompanyInvitation } from '@/utils/supabase/types';
 
 type Role = {
   id: string;
@@ -52,12 +43,12 @@ type Role = {
 };
 
 type CompanyInvitationsProps = {
-  companyId: string;
+  companyHandle: string; // Updated to use handle instead of ID
   userRole?: string;
 };
 
-export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsProps) {
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
+export function CompanyInvitations({ companyHandle, userRole }: CompanyInvitationsProps) {
+  const [invitations, setInvitations] = useState<CompanyInvitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [email, setEmail] = useState('');
@@ -72,8 +63,8 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
   useEffect(() => {
     const fetchInvitations = async () => {
       try {
-        // Fetch invitations
-        const response = await fetch(`/api/companies/${companyId}/invitations`);
+        // Fetch invitations using handle-based API
+        const response = await fetch(`/api/companies/${companyHandle}/invitations`);
         const data = await response.json();
         
         if (response.ok) {
@@ -82,16 +73,16 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
           toast.error(data.error || 'Failed to load invitations');
         }
         
-        // Check if user has invite permission
-        const permissionsResponse = await fetch(`/api/companies/${companyId}/user-permissions`);
+        // Check if user has invite permission using handle-based API
+        const permissionsResponse = await fetch(`/api/companies/${companyHandle}/user-permissions`);
         const permissionsData = await permissionsResponse.json();
         
         if (permissionsResponse.ok) {
           setCanInvite(permissionsData.permissions?.invite_users || false);
         }
         
-        // Fetch available roles
-        const rolesResponse = await fetch(`/api/companies/${companyId}/roles`);
+        // Fetch available roles using handle-based API
+        const rolesResponse = await fetch(`/api/companies/${companyHandle}/roles`);
         const rolesData = await rolesResponse.json();
         
         if (rolesResponse.ok) {
@@ -114,7 +105,7 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
     };
     
     fetchInvitations();
-  }, [companyId]);
+  }, [companyHandle]);
   
   // Create a new invitation
   const handleCreateInvitation = async (e: React.FormEvent) => {
@@ -133,7 +124,7 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
     setIsSubmitting(true);
     
     try {
-      const response = await fetch(`/api/companies/${companyId}/invitations`, {
+      const response = await fetch(`/api/companies/${companyHandle}/invitations`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +164,8 @@ export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsPr
   // Delete an invitation
   const handleDeleteInvitation = async (invitationId: string) => {
     try {
-      const response = await fetch(`/api/companies/${companyId}/invitations/${invitationId}`, {
+      // Use handle-based API
+      const response = await fetch(`/api/companies/${companyHandle}/invitations/${invitationId}`, {
         method: 'DELETE',
       });
       

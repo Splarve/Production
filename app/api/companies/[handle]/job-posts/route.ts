@@ -1,19 +1,27 @@
-// app/api/companies/[companyId]/job-posts/route.ts
+// Updated: app/api/companies/[handle]/job-posts/route.ts
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyFromHandle } from '@/utils/companies/handle';
 
 // GET: Fetch all job posts for a company
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { handle: string } }
 ) {
   try {
-    const { companyId } = await params;
+    const { handle } = await params;
     const { searchParams } = new URL(request.url);
     const publishedParam = searchParams.get('published');
     
     // Convert 'published' to boolean if provided
     const published = publishedParam ? publishedParam === 'true' : null;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
     
     const supabase = await createClient();
     
@@ -21,7 +29,7 @@ export async function GET(
     const { data: jobPosts, error } = await supabase.rpc(
       'get_company_job_posts',
       { 
-        p_company_id: companyId,
+        p_company_id: company.id,
         p_published: published
       }
     );
@@ -39,10 +47,18 @@ export async function GET(
 // POST: Create a new job post
 export async function POST(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { handle: string } }
 ) {
   try {
-    const { companyId } = params;
+    const { handle } = await params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Get current user
@@ -76,7 +92,7 @@ export async function POST(
     const { data: jobPostId, error: createError } = await supabase.rpc(
       'create_job_post',
       {
-        p_company_id: companyId,
+        p_company_id: company.id,
         p_title: title,
         p_description: description,
         p_location: location || null,

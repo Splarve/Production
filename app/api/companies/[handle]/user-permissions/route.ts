@@ -1,14 +1,23 @@
 // app/api/companies/[handle]/user-permissions/route.ts
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyFromHandle } from '@/utils/companies/handle';
 
 // GET: Fetch the current user's permissions for a company
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { handle: string } }
 ) {
   try {
-    const { companyId } = await params;
+    const { handle } = await params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Get current user
@@ -16,17 +25,6 @@ export async function GET(
     
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
-    // Get company by handle
-    const { data: company, error: companyError } = await supabase
-      .from('companies')
-      .select('id')
-      .eq('id', companyId)
-      .single();
-    
-    if (companyError || !company) {
-      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
     }
     
     // Get user's permissions in this company

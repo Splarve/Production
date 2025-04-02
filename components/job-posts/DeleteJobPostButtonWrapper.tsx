@@ -1,19 +1,17 @@
 'use client';
 
-// components/job-posts/DeleteJobPostButtonWrapper.tsx
+// components/job-posts/DeleteJobPostButtonWrapper.tsx (updated for handles)
 import { DeleteJobPostButton } from './DeleteJobPostButton';
 import { useRouter } from 'next/navigation';
 
 interface DeleteJobPostButtonWrapperProps {
-  companyId: string;
+  companyHandle: string; // Changed from companyId
   jobPostId: string;
-  companyHandle: string;
 }
 
 export function DeleteJobPostButtonWrapper({
-  companyId,
+  companyHandle,
   jobPostId,
-  companyHandle
 }: DeleteJobPostButtonWrapperProps) {
   const router = useRouter();
 
@@ -23,7 +21,7 @@ export function DeleteJobPostButtonWrapper({
 
   return (
     <DeleteJobPostButton
-      companyId={companyId}
+      companyHandle={companyHandle}
       jobPostId={jobPostId}
       onDeleteSuccess={handleDeleteSuccess}
     />

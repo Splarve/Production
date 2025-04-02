@@ -1,15 +1,24 @@
-// app/api/companies/[companyId]/members/[userId]/role-id/route.ts
+// app/api/companies/[handle]/members/[userId]/role-id/route.ts
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyFromHandle } from '@/utils/companies/handle';
 
 // PUT: Change a user's role by role_id
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { companyId: string, userId: string } }
+  { params }: { params: { handle: string, userId: string } }
 ) {
   try {
+    const { handle, userId } = await params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
-    const { companyId, userId } = await params;
     
     // Get request body
     const { roleId } = await request.json();
@@ -30,7 +39,7 @@ export async function PUT(
       .from('company_roles')
       .select('id, name, is_default, company_id')
       .eq('id', roleId)
-      .eq('company_id', companyId)
+      .eq('company_id', company.id)
       .single();
     
     if (roleError || !role) {
@@ -42,7 +51,7 @@ export async function PUT(
       .from('company_members')
       .select('role_id')
       .eq('user_id', userId)
-      .eq('company_id', companyId)
+      .eq('company_id', company.id)
       .single();
     
     if (memberError) {
@@ -57,7 +66,7 @@ export async function PUT(
         'user_has_permission',
         {
           user_id: user.id,
-          company_id: companyId,
+          company_id: company.id,
           required_permission: 'manage_all_users'
         }
       );
@@ -75,7 +84,7 @@ export async function PUT(
       'user_has_permission',
       {
         user_id: user.id,
-        company_id: companyId,
+        company_id: company.id,
         required_permission: 'change_user_roles'
       }
     );
@@ -84,7 +93,7 @@ export async function PUT(
       'user_has_permission',
       {
         user_id: user.id,
-        company_id: companyId,
+        company_id: company.id,
         required_permission: 'change_regular_user_roles'
       }
     );
@@ -129,7 +138,7 @@ export async function PUT(
       .from('company_members')
       .update({ role_id: roleId })
       .eq('user_id', userId)
-      .eq('company_id', companyId);
+      .eq('company_id', company.id);
     
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });

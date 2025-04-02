@@ -1,14 +1,23 @@
-// app/api/companies/[companyId]/roles/[roleId]/route.ts
+// app/api/companies/[handle]/roles/[roleId]/route.ts
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyFromHandle } from '@/utils/companies/handle';
 
 // GET: Get a single role
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string; roleId: string } }
+  { params }: { params: { handle: string; roleId: string } }
 ) {
   try {
-    const { companyId, roleId } = await params;
+    const { handle, roleId } = await params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Verify the user is authenticated
@@ -23,7 +32,7 @@ export async function GET(
       'user_has_permission',
       {
         user_id: user.id,
-        company_id: companyId,
+        company_id: company.id,
         required_permission: 'view_members'
       }
     );
@@ -45,7 +54,7 @@ export async function GET(
         updated_at
       `)
       .eq('id', roleId)
-      .eq('company_id', companyId)
+      .eq('company_id', company.id)
       .single();
     
     if (roleError || !role) {
@@ -81,10 +90,18 @@ export async function GET(
 // PUT: Update a role
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { companyId: string; roleId: string } }
+  { params }: { params: { handle: string; roleId: string } }
 ) {
   try {
-    const { companyId, roleId } = params;
+    const { handle, roleId } = params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Verify the user is authenticated
@@ -96,6 +113,18 @@ export async function PUT(
     
     // Get request body
     const { name, color, position, permissions } = await request.json();
+    
+    // Check if role exists and belongs to this company
+    const { data: existingRole, error: roleCheckError } = await supabase
+      .from('company_roles')
+      .select('id')
+      .eq('id', roleId)
+      .eq('company_id', company.id)
+      .single();
+    
+    if (roleCheckError || !existingRole) {
+      return NextResponse.json({ error: 'Role not found' }, { status: 404 });
+    }
     
     // Update the role
     const { data: result, error: updateError } = await supabase.rpc(
@@ -127,10 +156,18 @@ export async function PUT(
 // DELETE: Delete a role
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { companyId: string; roleId: string } }
+  { params }: { params: { handle: string; roleId: string } }
 ) {
   try {
-    const { companyId, roleId } = params;
+    const { handle, roleId } = params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Verify the user is authenticated
@@ -148,6 +185,17 @@ export async function DELETE(
         { error: 'Transfer role ID is required' },
         { status: 400 }
       );
+    }
+    
+    // Check if the roles exist and belong to this company
+    const { data: roles, error: rolesError } = await supabase
+      .from('company_roles')
+      .select('id')
+      .in('id', [roleId, transferToRoleId])
+      .eq('company_id', company.id);
+    
+    if (rolesError || !roles || roles.length !== 2) {
+      return NextResponse.json({ error: 'One or both roles not found' }, { status: 404 });
     }
     
     // Delete the role

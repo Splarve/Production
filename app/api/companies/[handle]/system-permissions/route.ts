@@ -1,14 +1,23 @@
-// app/api/companies/[companyId]/system-permissions/route.ts
+// app/api/companies/[handle]/system-permissions/route.ts
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyFromHandle } from '@/utils/companies/handle';
 
 // GET: Get all system permissions
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { handle: string } }
 ) {
   try {
-    const { companyId } = await params;
+    const { handle } = params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
+    
     const supabase = await createClient();
     
     // Verify the user is authenticated
@@ -23,7 +32,7 @@ export async function GET(
       'user_has_permission',
       {
         user_id: user.id,
-        company_id: companyId,
+        company_id: company.id,
         required_permission: 'manage_roles'
       }
     );

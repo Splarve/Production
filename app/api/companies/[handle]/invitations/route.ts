@@ -1,15 +1,23 @@
-// app/api/companies/[companyId]/invitations/route.ts
+// app/api/companies/[handle]/invitations/route.ts
 import { createClient } from '@/utils/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
+import { getCompanyFromHandle } from '@/utils/companies/handle';
+import { Company, CompanyInvitation } from '@/utils/supabase/types';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: { handle: string } }
 ) {
   try {
-    const companything = await params
-    const companyId = companything.companyId;
-    console.log("API: Fetching invitations for company:", companyId); // Debug log
+    const { handle } = params;
+    console.log("API: Fetching invitations for company handle:", handle);
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
     
     const supabase = await createClient();
     
@@ -21,9 +29,9 @@ export async function GET(
     }
     
     // Use the renamed stored procedure to get invitations
-    const { data: invitations, error: invitationsError } = await supabase.rpc(
+    const { data: invitations, error: invitationsError } = await supabase.rpc<CompanyInvitation[]>(
       'get_company_invites',
-      { p_company_id: companyId }
+      { p_company_id: company.id }
     );
     
     if (invitationsError) {
@@ -42,12 +50,17 @@ export async function GET(
 // POST: Create a new invitation
 export async function POST(
   request: NextRequest,
-  { params }: { params: { companyId: Promise<string> } }
+  { params }: { params: { handle: string } }
 ) {
   try {
-    // Await the companyId from params
-    const companything = await params
-    const companyId = companything.companyId;
+    const { handle } = params;
+    
+    // Get company by handle first
+    const company = await getCompanyFromHandle(handle);
+    
+    if (!company) {
+      return NextResponse.json({ error: 'Company not found' }, { status: 404 });
+    }
     
     const supabase = await createClient();
     
@@ -75,7 +88,7 @@ export async function POST(
     const { data: invitationId, error: invitationError } = await supabase.rpc(
       'create_company_invitation',
       {
-        p_company_id: companyId,
+        p_company_id: company.id,
         p_email: email,
         p_role: role,
         p_message: message

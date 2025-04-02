@@ -1,6 +1,6 @@
 'use client';
 
-// components/job-posts/DeleteJobPostButton.tsx
+// components/job-posts/DeleteJobPostButton.tsx (updated for handles)
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 interface DeleteJobPostButtonProps {
-  companyId: string;
+  companyHandle: string; // Changed from companyId to companyHandle
   jobPostId: string;
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
@@ -26,7 +26,7 @@ interface DeleteJobPostButtonProps {
 }
 
 export function DeleteJobPostButton({
-  companyId,
+  companyHandle,
   jobPostId,
   variant = 'ghost',
   size = 'icon',
@@ -40,7 +40,8 @@ export function DeleteJobPostButton({
     try {
       setIsDeleting(true);
 
-      const response = await fetch(`/api/companies/${companyId}/job-posts/${jobPostId}`, {
+      // Updated to use handle-based URL
+      const response = await fetch(`/api/companies/${companyHandle}/job-posts/${jobPostId}`, {
         method: 'DELETE',
       });
 
@@ -57,7 +58,7 @@ export function DeleteJobPostButton({
         onDeleteSuccess();
       } else {
         // Default behavior: navigate back to jobs list
-        router.push(`/dashboard/company/jobs`);
+        router.push(`/dashboard/company/${companyHandle}/jobs`);
         router.refresh();
       }
     } catch (error) {
