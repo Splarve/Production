@@ -1,183 +1,334 @@
-// components/company/ManageTeamMembers.tsx - Updated version
 'use client';
-
+// components/company/ManageTeamMembers.tsx
 import { useState, useEffect } from 'react';
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
+  CardContent, 
   CardDescription, 
-  CardContent
+  CardHeader, 
+  CardTitle 
 } from '@/components/ui/card';
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Users, Loader2, UserIcon } from 'lucide-react';
-import { createClient } from '@/utils/supabase/client';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { AlertCircle, MoreVertical, UserMinus } from 'lucide-react';
+import { toast } from "sonner";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { formatDistanceToNow } from 'date-fns';
-import { ChangeUserRole } from './ChangeUserRole';
+import { Skeleton } from '@/components/ui/skeleton';
+import { MemberRoleSelector } from '@/components/company/MemberRoleSelector';
 
-interface TeamMember {
-  user_id: string;
-  role: string;
-  username: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  last_active: string | null;
-}
-
-interface ManageTeamMembersProps {
-  companyId: string;
-  userRole: string;
+type Member = {
   userId: string;
-}
+  roleId: string;
+  roleName: string;
+  roleColor: string | null;
+  rolePosition: number;
+  isDefaultRole: boolean;
+  fullName: string;
+  username: string | null;
+  avatarUrl: string | null;
+  joinedAt: string;
+};
+
+type Role = {
+  id: string;
+  name: string;
+  color: string | null;
+  position: number;
+  isDefaultRole: boolean;
+};
+
+type ManageTeamMembersProps = {
+  companyId: string;
+  userRole?: string;
+  userId: string;
+};
 
 export function ManageTeamMembers({ companyId, userRole, userId }: ManageTeamMembersProps) {
-  const [members, setMembers] = useState<TeamMember[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [userPermissions, setUserPermissions] = useState({
+    canChangeRoles: false,
+    canChangeRegularRoles: false
+  });
+  const [roles, setRoles] = useState<Role[]>([]);
   
-  // Function to fetch members using the new RPC function
-  const fetchMembers = async () => {
-    try {
-      setLoading(true);
-      const supabase = createClient();
-      
-      // Use the RPC function to get detailed member information
-      const { data: membersData, error: membersError } = await supabase.rpc(
-        'get_company_members',
-        { p_company_id: companyId }
-      );
-      
-      if (membersError) {
-        console.error('Error fetching team members:', membersError);
-        return;
-      }
-      
-      setMembers(membersData || []);
-    } catch (error) {
-      console.error('Error in fetchMembers');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Fetch members and roles on mount
   useEffect(() => {
-    if (companyId) {
-      fetchMembers();
-    }
+    const fetchMembers = async () => {
+      try {
+        const response = await fetch(`/api/companies/${companyId}/members`);
+        const data = await response.json();
+        
+        if (response.ok) {
+          setMembers(data.members || []);
+          setUserPermissions(data.userPermissions || {});
+          
+          // Extract roles from members for the role selector
+          const extractedRoles = data.members.reduce((acc: Role[], member: Member) => {
+            // Skip if role already added
+            if (acc.some(role => role.id === member.roleId)) {
+              return acc;
+            }
+            
+            acc.push({
+              id: member.roleId,
+              name: member.roleName,
+              color: member.roleColor,
+              position: member.rolePosition,
+              isDefaultRole: member.isDefaultRole
+            });
+            
+            return acc;
+          }, []);
+          
+          setRoles(extractedRoles);
+        } else {
+          toast.error(data.error || 'Failed to load team members');
+        }
+      } catch (error) {
+        console.error('Error fetching team members:', error);
+        toast.error('An unexpected error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchMembers();
   }, [companyId]);
-
-  // Generate initials from name or username
-  const getInitials = (name: string): string => {
-    if (!name) return 'U';
+  
+  // Handle removing a member
+  const handleRemoveMember = async () => {
+    if (!memberToRemove) return;
     
-    // For full names, use first letters of first and last name
-    const parts = name.split(' ');
-    if (parts.length > 1) {
-      return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+    try {
+      const response = await fetch(`/api/companies/${companyId}/members/${memberToRemove.userId}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success(`${memberToRemove.fullName} has been removed from the company.`);
+        
+        // Update local state to remove the member
+        setMembers(members.filter(m => m.userId !== memberToRemove.userId));
+      } else {
+        toast.error(data.error || 'Failed to remove member');
+      }
+    } catch (error) {
+      console.error('Error removing member:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      // Reset state
+      setMemberToRemove(null);
+      setConfirmDialogOpen(false);
+    }
+  };
+  
+  // Handle role change
+  const handleRoleChange = (userId: string, roleId: string, roleName: string) => {
+    // Update the member's role in the local state
+    setMembers(members.map(member => {
+      if (member.userId === userId) {
+        return {
+          ...member,
+          roleId,
+          roleName
+        };
+      }
+      return member;
+    }));
+  };
+  
+  // Calculate user initials for avatar fallback
+  const getUserInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+  
+  // Function to determine if a user's role can be changed
+  const canChangeUserRole = (member: Member) => {
+    // Can't change anything if no permission
+    if (!userPermissions.canChangeRoles && !userPermissions.canChangeRegularRoles) {
+      return false;
     }
     
-    // For single names or usernames, use first two letters
-    return name.substring(0, 2).toUpperCase();
+    // Can change any user if has full permission
+    if (userPermissions.canChangeRoles) {
+      return true;
+    }
+    
+    // Can only change regular users (not Owner or Admin) with regular permission
+    if (userPermissions.canChangeRegularRoles) {
+      return !['Owner', 'Admin'].includes(member.roleName);
+    }
+    
+    return false;
   };
-
-  return (
-    <Card className="w-full border-[#c9a0ff]/30">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div>
-          <CardTitle className="text-xl flex items-center gap-2 text-[#4b0076]">
-            <Users size={20} className="text-[#8f00ff]" />
-            Team Members
-          </CardTitle>
+  
+  if (isLoading) {
+    return (
+      <Card className="border-[#c9a0ff]/30">
+        <CardHeader>
+          <CardTitle className="text-[#4b0076]">Team Members</CardTitle>
           <CardDescription>
-            View your company's team members
+            Loading team members...
           </CardDescription>
-        </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 rounded-full bg-gray-200" />
+                  <div>
+                    <Skeleton className="h-4 w-32 bg-gray-200" />
+                    <Skeleton className="h-3 w-24 bg-gray-100 mt-1" />
+                  </div>
+                </div>
+                <Skeleton className="h-8 w-24 bg-gray-200" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card className="border-[#c9a0ff]/30">
+      <CardHeader>
+        <CardTitle className="text-[#4b0076]">Team Members</CardTitle>
+        <CardDescription>
+          {members.length} {members.length === 1 ? 'member' : 'members'} in this company
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <div className="flex justify-center items-center h-32">
-            <Loader2 size={24} className="animate-spin text-[#8f00ff]" />
-          </div>
-        ) : members.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Users className="mx-auto h-12 w-12 text-[#c9a0ff]/50 mb-3" />
-            <h3 className="font-medium text-lg text-[#4b0076]">No team members</h3>
-            <p className="mt-1">
-              There are no team members in your company yet.
-            </p>
+        {members.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-muted-foreground">No team members found.</p>
           </div>
         ) : (
-          <div className="rounded-md border border-[#c9a0ff]/30">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-[#f8f5ff]">
-                  <TableHead className="text-[#4b0076]">User</TableHead>
-                  <TableHead className="text-[#4b0076]">Role</TableHead>
-                  {userRole === 'owner' || userRole === 'admin' ? (
-                    <TableHead className="w-10 text-[#4b0076]"></TableHead>
-                  ) : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {members.map((member) => {
-                  const isCurrentUser = member.user_id === userId;
+          <div className="space-y-4">
+            {members.map((member) => (
+              <div key={member.userId} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    {member.avatarUrl && (
+                      <AvatarImage src={member.avatarUrl} alt={member.fullName} />
+                    )}
+                    <AvatarFallback className="bg-[#c9a0ff]/20 text-[#8f00ff]">
+                      {getUserInitials(member.fullName)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">
+                      {member.fullName}
+                      {member.userId === userId && " (you)"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Joined {formatDistanceToNow(new Date(member.joinedAt), { addSuffix: true })}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <MemberRoleSelector
+                    userId={member.userId}
+                    companyId={companyId}
+                    currentRoleId={member.roleId}
+                    roles={roles}
+                    isSelf={member.userId === userId}
+                    disabled={!canChangeUserRole(member)}
+                    onRoleChange={(roleId, roleName) => 
+                      handleRoleChange(member.userId, roleId, roleName)
+                    }
+                  />
                   
-                  return (
-                    <TableRow key={member.user_id} className="hover:bg-[#f8f5ff]">
-                      <TableCell className="flex items-center gap-3">
-                        <Avatar>
-                          {member.avatar_url ? (
-                            <AvatarImage src={member.avatar_url} alt={member.full_name || member.username || "User"} />
-                          ) : (
-                            <AvatarFallback>
-                              {member.full_name ? getInitials(member.full_name) : getInitials(member.username || 'User')}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div>
-                          <div className="font-medium">
-                            {member.full_name || member.username || `User ${member.user_id.substring(0, 8)}`}
-                            {isCurrentUser && <span className="ml-2 text-xs text-muted-foreground">(You)</span>}
-                          </div>
-                          {member.last_active && (
-                            <div className="text-xs text-muted-foreground">
-                              Last active {formatDistanceToNow(new Date(member.last_active), { addSuffix: true })}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="capitalize">{member.role}</div>
-                      </TableCell>
-                      {userRole === 'owner' || userRole === 'admin' ? (
-                        <TableCell className="text-right">
-                          {!isCurrentUser && (
-                            <ChangeUserRole
-                              userId={member.user_id}
-                              companyId={companyId}
-                              currentRole={member.role}
-                              userFullName={member.full_name || member.username || `User ${member.user_id.substring(0, 8)}`}
-                              userRole={userRole}
-                              onRoleChanged={fetchMembers}
-                            />
-                          )}
-                        </TableCell>
-                      ) : null}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                  {/* Only show more options for non-self members */}
+                  {member.userId !== userId && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onClick={() => {
+                            setMemberToRemove(member);
+                            setConfirmDialogOpen(true);
+                          }}
+                        >
+                          <UserMinus className="mr-2 h-4 w-4" />
+                          Remove Member
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </CardContent>
+      
+      {/* Remove Member Confirmation Dialog */}
+      <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Team Member</AlertDialogTitle>
+            <AlertDialogDescription>
+              <div className="space-y-4">
+                <p>
+                  Are you sure you want to remove <strong>{memberToRemove?.fullName}</strong> from this company?
+                </p>
+                
+                <div className="p-3 rounded-md bg-amber-50 text-amber-700 flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                  <div>
+                    <p>This action cannot be undone. The user will lose access to this company and all associated resources.</p>
+                  </div>
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveMember}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              Remove Member
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

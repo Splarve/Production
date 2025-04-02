@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: { companyId: string } }
 ) {
   try {
-    const { companyId } = params;
+    const { companyId } = await params;
     const supabase = await createClient();
     
     // Verify the user is authenticated

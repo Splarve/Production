@@ -1,279 +1,376 @@
-// components/company/CompanyInvitations.tsx
 'use client';
-
+// components/company/CompanyInvitations.tsx
 import { useState, useEffect } from 'react';
 import { 
   Card, 
-  CardHeader, 
-  CardTitle, 
+  CardContent, 
   CardDescription, 
-  CardContent
+  CardHeader, 
+  CardTitle 
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from '@/components/ui/table';
-import { InviteMembers } from '@/components/company/InviteMembers';
-import { Mail, X, CheckCircle, XCircle, Clock, AlertCircle, Loader2, UserPlus } from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
-import { 
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '@/components/ui/tooltip';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PlusCircle, MailIcon, ClockIcon, MailPlus, XCircle } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
-export interface Invitation {
+type Invitation = {
   id: string;
-  company_id: string;
-  invited_by: string;
   email: string;
   role: string;
-  status: 'pending' | 'accepted' | 'rejected';
+  roleId?: string; // For role-based invitations
   message?: string;
-  created_at: string;
-  updated_at: string;
-  expires_at: string;
-}
+  createdAt: string;
+  expiresAt: string;
+};
 
-interface CompanyInvitationsProps {
+type Role = {
+  id: string;
+  name: string;
+  color: string | null;
+  position: number;
+  isDefaultRole: boolean;
+};
+
+type CompanyInvitationsProps = {
   companyId: string;
-  userRole: string;
-}
+  userRole?: string;
+};
 
 export function CompanyInvitations({ companyId, userRole }: CompanyInvitationsProps) {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [cancelingId, setCancelingId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  // Determine if user can manage invitations
-  const canInvite = ['owner', 'admin', 'hr'].includes(userRole);
-
-  // Function to fetch invitations using server API
-  const fetchInvitations = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Use the correct API endpoint
-      const response = await fetch(`/api/companies/${companyId}/invitations`);
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch invitations');
-      }
-      
-      const data = await response.json();
-      setInvitations(data.invitations || []);
-    } catch (error: any) {
-      setError(error.message || 'Failed to load invitations');
-      setInvitations([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch invitations when component mounts
+  const [isLoading, setIsLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('');
+  const [roleId, setRoleId] = useState(''); // For role-based invitations
+  const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [canInvite, setCanInvite] = useState(false);
+  const [roles, setRoles] = useState<Role[]>([]);
+  
+  // Fetch invitations and roles on mount
   useEffect(() => {
-    if (companyId) {
-      fetchInvitations();
-    } else {
-      setLoading(false);
-    }
+    const fetchInvitations = async () => {
+      try {
+        // Fetch invitations
+        const response = await fetch(`/api/companies/${companyId}/invitations`);
+        const data = await response.json();
+        
+        if (response.ok) {
+          setInvitations(data.invitations || []);
+        } else {
+          toast.error(data.error || 'Failed to load invitations');
+        }
+        
+        // Check if user has invite permission
+        const permissionsResponse = await fetch(`/api/companies/${companyId}/user-permissions`);
+        const permissionsData = await permissionsResponse.json();
+        
+        if (permissionsResponse.ok) {
+          setCanInvite(permissionsData.permissions?.invite_users || false);
+        }
+        
+        // Fetch available roles
+        const rolesResponse = await fetch(`/api/companies/${companyId}/roles`);
+        const rolesData = await rolesResponse.json();
+        
+        if (rolesResponse.ok) {
+          setRoles(rolesData.roles || []);
+          
+          // Select default Member role
+          const memberRole = rolesData.roles.find((r: Role) => r.name === 'Member');
+          if (memberRole) {
+            setRoleId(memberRole.id);
+          } else if (rolesData.roles.length > 0) {
+            setRoleId(rolesData.roles[0].id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching invitations:', error);
+        toast.error('An unexpected error occurred');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchInvitations();
   }, [companyId]);
-
-  // Function to cancel an invitation
-  async function handleCancelInvitation(id: string) {
-    if (!confirm('Are you sure you want to cancel this invitation?')) {
+  
+  // Create a new invitation
+  const handleCreateInvitation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.trim()) {
+      toast.error('Email is required');
       return;
     }
-
-    setCancelingId(id);
+    
+    if (!roleId) {
+      toast.error('Please select a role');
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
     try {
-      const response = await fetch(`/api/companies/${companyId}/invitations/${id}`, {
+      const response = await fetch(`/api/companies/${companyId}/invitations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          roleId: roleId,
+          message: message.trim() || undefined,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success(`Invitation sent to ${email}`);
+        
+        // Add the new invitation to the list
+        if (data.invitation) {
+          setInvitations([data.invitation, ...invitations]);
+        }
+        
+        // Reset form
+        setEmail('');
+        setMessage('');
+        setDialogOpen(false);
+      } else {
+        toast.error(data.error || 'Failed to send invitation');
+      }
+    } catch (error) {
+      console.error('Error sending invitation:', error);
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  // Delete an invitation
+  const handleDeleteInvitation = async (invitationId: string) => {
+    try {
+      const response = await fetch(`/api/companies/${companyId}/invitations/${invitationId}`, {
         method: 'DELETE',
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to cancel invitation');
-      }
+      const data = await response.json();
       
-      // Remove from the list on success
-      setInvitations(prev => prev.filter(inv => inv.id !== id));
-    } catch (error: any) {
-      alert(error.message || 'An error occurred while canceling the invitation');
-    } finally {
-      setCancelingId(null);
-    }
-  }
-
-  // Get status badge based on invitation status
-  const getStatusBadge = (invitation: Invitation) => {
-    const now = new Date();
-    const expiresAt = new Date(invitation.expires_at);
-    const isExpired = expiresAt < now;
-
-    if (isExpired && invitation.status === 'pending') {
-      return (
-        <div className="flex items-center gap-1 text-muted-foreground">
-          <AlertCircle size={14} />
-          <span>Expired</span>
-        </div>
-      );
-    }
-
-    switch (invitation.status) {
-      case 'pending':
-        return (
-          <div className="flex items-center gap-1 text-amber-500">
-            <Clock size={14} />
-            <span>Pending</span>
-          </div>
-        );
-      case 'accepted':
-        return (
-          <div className="flex items-center gap-1 text-green-500">
-            <CheckCircle size={14} />
-            <span>Accepted</span>
-          </div>
-        );
-      case 'rejected':
-        return (
-          <div className="flex items-center gap-1 text-destructive">
-            <XCircle size={14} />
-            <span>Declined</span>
-          </div>
-        );
-      default:
-        return null;
+      if (response.ok) {
+        toast.success('Invitation deleted');
+        
+        // Remove the invitation from the list
+        setInvitations(invitations.filter(inv => inv.id !== invitationId));
+      } else {
+        toast.error(data.error || 'Failed to delete invitation');
       }
-      };
-
-      // If user doesn't have permission, don't render the component
-      if (!canInvite) {
-      return null;
-      }
-
-      return (
-      <Card className="w-full border-[#c9a0ff]/30">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <div>
-          <CardTitle className="text-xl text-[#4b0076]">Team Invitations</CardTitle>
+    } catch (error) {
+      console.error('Error deleting invitation:', error);
+      toast.error('An unexpected error occurred');
+    }
+  };
+  
+  // Get role name by ID
+  const getRoleName = (roleId: string) => {
+    const role = roles.find(r => r.id === roleId);
+    return role?.name || 'Unknown Role';
+  };
+  
+  if (isLoading) {
+    return (
+      <Card className="border-[#c9a0ff]/30">
+        <CardHeader>
+          <CardTitle className="text-[#4b0076]">Pending Invitations</CardTitle>
           <CardDescription>
-            Manage invitations to join your company
+            Loading invitations...
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[1, 2].map((i) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 rounded-full bg-gray-200" />
+                  <div>
+                    <Skeleton className="h-4 w-32 bg-gray-200" />
+                    <Skeleton className="h-3 w-24 bg-gray-100 mt-1" />
+                  </div>
+                </div>
+                <Skeleton className="h-8 w-24 bg-gray-200" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card className="border-[#c9a0ff]/30">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-[#4b0076]">Pending Invitations</CardTitle>
+          <CardDescription>
+            {invitations.length} pending {invitations.length === 1 ? 'invitation' : 'invitations'}
           </CardDescription>
         </div>
+        
         {canInvite && (
-          <InviteMembers 
-            companyId={companyId} 
-            userRole={userRole}
-            onInviteSent={fetchInvitations}
-          />
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#8f00ff] hover:bg-[#4b0076]">
+                <MailPlus className="mr-2 h-4 w-4" />
+                Invite Member
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <form onSubmit={handleCreateInvitation}>
+                <DialogHeader>
+                  <DialogTitle>Invite New Member</DialogTitle>
+                  <DialogDescription>
+                    Send an invitation to join this company. The recipient will receive an email with instructions.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="user@example.com"
+                      required
+                      type="email"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select value={roleId} onValueChange={setRoleId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles
+                          .sort((a, b) => b.position - a.position) // Sort by position
+                          .map((role) => (
+                            <SelectItem key={role.id} value={role.id}>
+                              {role.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="message">Message (optional)</Label>
+                    <Textarea
+                      id="message"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Add a personal message to the invitation email"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+                
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-[#8f00ff] hover:bg-[#4b0076]"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Sending...' : 'Send Invitation'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         )}
       </CardHeader>
+      
       <CardContent>
-        {loading ? (
-          <div className="flex justify-center items-center h-32">
-            <Loader2 size={24} className="animate-spin text-[#8f00ff]" />
-          </div>
-        ) : error ? (
-          <div className="text-center py-8 text-red-500">
-            <AlertCircle className="mx-auto h-12 w-12 text-red-500/50 mb-3" />
-            <h3 className="font-medium text-lg">Error Loading Invitations</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{error}</p>
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="mt-4 border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]"
-              onClick={fetchInvitations}
-            >
-              Try Again
-            </Button>
-          </div>
-        ) : invitations.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <Mail className="mx-auto h-12 w-12 text-[#c9a0ff]/50 mb-3" />
-            <h3 className="font-medium text-lg text-[#4b0076]">No invitations</h3>
-            <p className="mt-1">
-              {canInvite 
-                ? "Invite team members to collaborate in your company." 
-                : "There are no pending invitations at this time."}
-            </p>
+        {invitations.length === 0 ? (
+          <div className="text-center py-6">
+            <p className="text-muted-foreground">No pending invitations</p>
             {canInvite && (
-              <Button 
-                variant="outline" 
-                className="mt-4 border-[#c9a0ff] hover:bg-[#c9a0ff]/10 text-[#4b0076] hover:text-[#8f00ff]"
-                onClick={() => {
-                  // Find and click the InviteMembers trigger button
-                  const button = document.querySelector('[data-state="closed"][aria-haspopup="dialog"]') as HTMLButtonElement;
-                  if (button) button.click();
-                }}
+              <Button
+                variant="link"
+                className="mt-2 text-[#8f00ff]"
+                onClick={() => setDialogOpen(true)}
               >
-                <UserPlus size={16} className="mr-2" />
-                Invite People
+                <MailPlus className="mr-2 h-4 w-4" />
+                Send an invitation
               </Button>
             )}
           </div>
         ) : (
-          <div className="rounded-md border border-[#c9a0ff]/30">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-[#f8f5ff]">
-                  <TableHead className="text-[#4b0076]">Email</TableHead>
-                  <TableHead className="text-[#4b0076]">Role</TableHead>
-                  <TableHead className="text-[#4b0076]">Status</TableHead>
-                  <TableHead className="text-[#4b0076]">Sent</TableHead>
-                  <TableHead className="text-right text-[#4b0076]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {invitations.map((invitation) => (
-                  <TableRow key={invitation.id} className="hover:bg-[#f8f5ff]">
-                    <TableCell className="font-medium text-[#4b0076]">{invitation.email}</TableCell>
-                    <TableCell className="capitalize text-[#4b0076]">{invitation.role}</TableCell>
-                    <TableCell>{getStatusBadge(invitation)}</TableCell>
-                    <TableCell>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger className="text-sm text-muted-foreground">
-                            {formatDistanceToNow(new Date(invitation.created_at), { addSuffix: true })}
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            {format(new Date(invitation.created_at), 'PPpp')}
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </TableCell>
-                    <TableCell className="text-right text-[#4b0076]">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 hover:bg-[#c9a0ff]/10 hover:text-[#8f00ff]"
-                        onClick={() => handleCancelInvitation(invitation.id)}
-                        disabled={cancelingId === invitation.id || invitation.status !== 'pending'}
-                      >
-                        {cancelingId === invitation.id ? (
-                          <Loader2 size={16} className="animate-spin text-[#8f00ff]" />
-                        ) : (
-                          <X size={16} />
-                        )}
-                        <span className="sr-only">Cancel Invitation</span>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="space-y-4">
+            {invitations.map((invitation) => (
+              <div key={invitation.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-full bg-[#c9a0ff]/20 flex items-center justify-center">
+                    <MailIcon className="h-5 w-5 text-[#8f00ff]" />
+                  </div>
+                  <div>
+                    <p className="font-medium">{invitation.email}</p>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <span className="mr-2">
+                        Role: {invitation.roleId ? getRoleName(invitation.roleId) : invitation.role}
+                      </span>
+                      <span className="flex items-center">
+                        <ClockIcon className="h-3 w-3 mr-1" />
+                        Expires {formatDistanceToNow(new Date(invitation.expiresAt), { addSuffix: true })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleDeleteInvitation(invitation.id)}
+                >
+                  <XCircle className="h-4 w-4" />
+                  <span className="sr-only">Delete</span>
+                </Button>
+              </div>
+            ))}
           </div>
         )}
       </CardContent>
-      </Card>
-      );
-      }
+    </Card>
+  );
+}
